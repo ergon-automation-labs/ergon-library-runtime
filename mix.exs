@@ -1,0 +1,34 @@
+defmodule BotArmyRuntime.MixProject do
+  use Mix.Project
+
+  def project do
+    [
+      app: :bot_army_runtime,
+      version: "0.1.0",
+      elixir: "~> 1.14",
+      start_permanent: Mix.env() == :prod,
+      deps: deps()
+    ]
+  end
+
+  def application do
+    [
+      extra_applications: [:logger],
+      mod: {BotArmyRuntime.Application, []}
+    ]
+  end
+
+  defp deps do
+    [
+      {:ecto_sql, "~> 3.10"},
+      {:postgrex, "~> 0.17"},
+      {:gnat, "~> 1.2"},
+      {:telemetry, "~> 1.2"},
+      {:logger_json, "~> 5.1"},
+      {:ex_doc, "~> 0.30", only: :dev},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:mock, "~> 0.3.0", only: :test}
+    ]
+  end
+end
