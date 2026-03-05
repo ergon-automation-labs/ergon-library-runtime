@@ -15,7 +15,7 @@ pipeline {
   }
 
   environment {
-    GITHUB_REPO = "ergon-automation-labs/bot_army_runtime"
+    GITHUB_REPO = "ergon-automation-labs/ergon-runtime"
     LIBRARY_NAME = "bot_army_runtime"
     LIBRARY_DIR = "/opt/ergon/libraries/bot_army_runtime"
   }
