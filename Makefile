@@ -1,4 +1,4 @@
-.PHONY: help install compile test lint format check docs clean
+.PHONY: help install compile test lint format check docs clean setup-hooks
 
 help:
 	@echo "Bot Army Runtime development tasks"
@@ -6,7 +6,8 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install        Install dependencies (npm + mix)"
+	@echo "  install        Install dependencies (npm + mix + install git hooks)"
+	@echo "  setup-hooks    Install git hooks for pre-push validation"
 	@echo "  compile        Compile the project"
 	@echo "  test           Run all tests"
 	@echo "  test-watch     Run tests in watch mode"
@@ -20,8 +21,12 @@ help:
 	@echo "  db-setup       Create and migrate test database"
 	@echo "  db-drop        Drop test database"
 
-install:
+install: setup-hooks
 	mix deps.get
+
+setup-hooks:
+	@git config core.hooksPath git-hooks
+	@echo "✓ Git hooks installed (core.hooksPath = git-hooks)"
 
 compile:
 	mix compile
