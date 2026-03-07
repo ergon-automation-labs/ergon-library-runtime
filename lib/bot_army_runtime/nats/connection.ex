@@ -92,10 +92,10 @@ defmodule BotArmyRuntime.NATS.Connection do
   end
 
   defp connect(servers, ping_interval) do
-    case Gnat.start_link([
-      {:servers, servers},
-      {:ping_interval, ping_interval}
-    ]) do
+    case Gnat.start_link(%{
+      servers: servers,
+      ping_interval: ping_interval
+    }) do
       {:ok, pid} ->
         {:ok, pid}
 
