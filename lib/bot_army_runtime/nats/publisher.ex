@@ -85,19 +85,10 @@ defmodule BotArmyRuntime.NATS.Publisher do
     end
   end
 
-  defp do_publish(conn, subject, payload, opts, timeout) do
-    reply_to = Keyword.get(opts, :reply_to, nil)
-
+  defp do_publish(conn, subject, payload, _opts, _timeout) do
     try do
       json_payload = Jason.encode!(payload)
-
-      case reply_to do
-        nil ->
-          Gnat.pub(conn, subject, json_payload, timeout: timeout)
-
-        reply_to ->
-          Gnat.pub(conn, subject, reply_to, json_payload, timeout: timeout)
-      end
+      Gnat.pub(conn, subject, json_payload)
 
       log_publish_success(subject, payload)
       {:ok, subject}
