@@ -19,10 +19,11 @@ defmodule BotArmyRuntime.Application do
 
     children = [
       # Telemetry handlers for observability
-      {BotArmyRuntime.Telemetry, []}
+      {BotArmyRuntime.Telemetry, []},
 
-      # NATS connection is started conditionally based on application needs
-      # See NATS.Connection module for details
+      # NATS connection (required for message bus communication)
+      # Configuration read from :bot_army_runtime, :nats in config/runtime.exs
+      {BotArmyRuntime.NATS.Connection, []}
     ]
 
     opts = [strategy: :one_for_one, name: BotArmyRuntime.Supervisor]
