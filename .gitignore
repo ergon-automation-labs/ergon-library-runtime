@@ -4,6 +4,11 @@
 erl_crash.dump
 *.ez
 
+# Build artifacts and crash dumps
+*.crash
+*.tar.gz
+*.tar.xz
+
 # Mix
 .mix
 
