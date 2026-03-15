@@ -45,21 +45,69 @@ defmodule BotArmyRuntime.Personality.IdentityTest do
       assert Identity.symbol(:trading_bot) == "●"
     end
 
-    test "raises KeyError for unknown bot" do
-      assert_raise KeyError, fn ->
+    test "raises ArgumentError for unknown bot" do
+      assert_raise ArgumentError, fn ->
         Identity.symbol(:unknown_bot)
       end
     end
   end
 
-  describe "all_symbols/0" do
-    test "returns all symbols as a map" do
-      symbols = Identity.all_symbols()
+  describe "name/1" do
+    test "returns GTD bot name" do
+      assert Identity.name(:gtd_bot) == "Morgan"
+    end
 
-      assert is_map(symbols)
-      assert map_size(symbols) == 10
-      assert symbols[:gtd_bot] == "◉"
-      assert symbols[:fitness_bot] == "▲"
+    test "returns Fitness bot name" do
+      assert Identity.name(:fitness_bot) == "Jordan"
+    end
+
+    test "returns Job bot name" do
+      assert Identity.name(:job_bot) == "Quinn"
+    end
+
+    test "returns Advocacy bot name" do
+      assert Identity.name(:advocacy_bot) == "Riley"
+    end
+
+    test "returns Chore bot name" do
+      assert Identity.name(:chore_bot) == "Taylor"
+    end
+
+    test "returns Learning bot name" do
+      assert Identity.name(:learning_bot) == "Kit"
+    end
+
+    test "returns SRE terminal name" do
+      assert Identity.name(:sre_terminal) == "Casey"
+    end
+
+    test "returns Calendar bot name" do
+      assert Identity.name(:calendar_bot) == "Alex"
+    end
+
+    test "returns Wakeword bot name" do
+      assert Identity.name(:wakeword_bot) == "Sam"
+    end
+
+    test "returns nil for Trading bot (no name assigned)" do
+      assert Identity.name(:trading_bot) == nil
+    end
+
+    test "raises ArgumentError for unknown bot" do
+      assert_raise ArgumentError, fn ->
+        Identity.name(:unknown_bot)
+      end
+    end
+  end
+
+  describe "all_bots/0" do
+    test "returns all bots as a map" do
+      bots = Identity.all_bots()
+
+      assert is_map(bots)
+      assert map_size(bots) == 10
+      assert bots[:gtd_bot] == %{symbol: "◉", name: "Morgan"}
+      assert bots[:fitness_bot] == %{symbol: "▲", name: "Jordan"}
     end
   end
 

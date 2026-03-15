@@ -8,17 +8,17 @@ defmodule BotArmyRuntime.Personality.Identity do
   Reference: `/docs/north_star_docs/BOT_ARMY_PERSONALITY_NORTH_STAR.md`
   """
 
-  @symbols %{
-    gtd_bot: "◉",
-    fitness_bot: "▲",
-    job_bot: "◆",
-    advocacy_bot: "◄",
-    chore_bot: "⟳",
-    learning_bot: "✦",
-    sre_terminal: "▸",
-    calendar_bot: "◷",
-    wakeword_bot: "◎",
-    trading_bot: "●"
+  @bots %{
+    gtd_bot: %{symbol: "◉", name: "Morgan"},
+    fitness_bot: %{symbol: "▲", name: "Jordan"},
+    job_bot: %{symbol: "◆", name: "Quinn"},
+    advocacy_bot: %{symbol: "◄", name: "Riley"},
+    chore_bot: %{symbol: "⟳", name: "Taylor"},
+    learning_bot: %{symbol: "✦", name: "Kit"},
+    sre_terminal: %{symbol: "▸", name: "Casey"},
+    calendar_bot: %{symbol: "◷", name: "Alex"},
+    wakeword_bot: %{symbol: "◎", name: "Sam"},
+    trading_bot: %{symbol: "●", name: nil}
   }
 
   @doc """
@@ -33,18 +33,39 @@ defmodule BotArmyRuntime.Personality.Identity do
       "▲"
   """
   def symbol(bot_name) when is_atom(bot_name) do
-    Map.fetch!(@symbols, bot_name)
+    case Map.fetch(@bots, bot_name) do
+      {:ok, %{symbol: symbol}} -> symbol
+      :error -> raise ArgumentError, "Unknown bot: #{bot_name}"
+    end
   end
 
   @doc """
-  Get all symbols as a map.
+  Get the name for a given bot.
+
+  ## Examples
+
+      iex> BotArmyRuntime.Personality.Identity.name(:gtd_bot)
+      "Morgan"
+
+      iex> BotArmyRuntime.Personality.Identity.name(:trading_bot)
+      nil
   """
-  def all_symbols, do: @symbols
+  def name(bot_name) when is_atom(bot_name) do
+    case Map.fetch(@bots, bot_name) do
+      {:ok, %{name: name}} -> name
+      :error -> raise ArgumentError, "Unknown bot: #{bot_name}"
+    end
+  end
+
+  @doc """
+  Get all bots as a map.
+  """
+  def all_bots, do: @bots
 
   @doc """
   Check if a bot has a registered symbol.
   """
   def registered?(bot_name) when is_atom(bot_name) do
-    Map.has_key?(@symbols, bot_name)
+    Map.has_key?(@bots, bot_name)
   end
 end
