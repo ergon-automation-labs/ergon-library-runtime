@@ -109,7 +109,7 @@ defmodule BotArmyRuntime.NATS.Publisher do
 
       case Gnat.request(conn, subject, json_payload, receive_timeout: timeout_ms) do
         {:ok, reply} ->
-          case Jason.decode(reply) do
+          case decode_reply_payload(reply) do
             {:ok, decoded} ->
               log_request_success(subject, payload)
               {:ok, decoded}
@@ -211,4 +211,17 @@ defmodule BotArmyRuntime.NATS.Publisher do
       error: error.message
     )
   end
+
+  defp decode_reply_payload(reply) do
+    reply
+    |> extract_reply_body()
+    |> Jason.decode()
+  end
+
+  # Gnat.request/4 returns a map/struct with a "body" field.
+  # Keep this defensive to handle map keys and fallback payload shapes.
+  defp extract_reply_body(%{body: body}) when is_binary(body), do: body
+  defp extract_reply_body(%{"body" => body}) when is_binary(body), do: body
+  defp extract_reply_body(body) when is_binary(body), do: body
+  defp extract_reply_body(other), do: other
 end
