@@ -4,7 +4,7 @@ defmodule BotArmyRuntime.MixProject do
   def project do
     [
       app: :bot_army_runtime,
-      version: "0.5.0",
+      version: "0.6.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -29,6 +29,9 @@ defmodule BotArmyRuntime.MixProject do
       {:plug_cowboy, "~> 2.7"},
       {:sentry, "~> 10.0"},
       {:hackney, "~> 1.20"},
+      {:opentelemetry, "~> 1.7"},
+      {:opentelemetry_api, "~> 1.5"},
+      {:opentelemetry_exporter, "~> 1.10"},
       {:ex_doc, "~> 0.30", only: :dev},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

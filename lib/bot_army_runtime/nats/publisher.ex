@@ -88,7 +88,8 @@ defmodule BotArmyRuntime.NATS.Publisher do
   defp do_publish(conn, subject, payload, _opts, _timeout) do
     try do
       json_payload = Jason.encode!(payload)
-      Gnat.pub(conn, subject, json_payload)
+      headers = BotArmyRuntime.Tracing.inject_trace_context([])
+      Gnat.pub(conn, subject, json_payload, headers: headers)
 
       log_publish_success(subject, payload)
       {:ok, subject}
@@ -106,8 +107,12 @@ defmodule BotArmyRuntime.NATS.Publisher do
   defp do_request(conn, subject, payload, timeout_ms) do
     try do
       json_payload = Jason.encode!(payload)
+      headers = BotArmyRuntime.Tracing.inject_trace_context([])
 
-      case Gnat.request(conn, subject, json_payload, receive_timeout: timeout_ms) do
+      case Gnat.request(conn, subject, json_payload,
+             receive_timeout: timeout_ms,
+             headers: headers
+           ) do
         {:ok, reply} ->
           case decode_reply_payload(reply) do
             {:ok, decoded} ->
@@ -140,6 +145,7 @@ defmodule BotArmyRuntime.NATS.Publisher do
 
   defp get_connection do
     timeout_ms = Application.get_env(:bot_army_runtime, :nats_connection_timeout, 1000)
+
     BotArmyRuntime.NATS.Connection
     |> GenServer.call(:get_connection, timeout_ms)
   rescue

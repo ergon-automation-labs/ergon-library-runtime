@@ -32,6 +32,32 @@ config :sentry,
   enable_source_code_context: true,
   root_source_code_path: File.cwd!()
 
+# OpenTelemetry distributed tracing
+# If OTEL_EXPORTER_OTLP_ENDPOINT is set, traces are exported to that endpoint (e.g. Grafana Tempo).
+# If unset, the noop exporter is used (no overhead).
+otel_exporter = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT")
+
+if otel_exporter do
+  config :opentelemetry,
+    span_processor: :batch,
+    traces_exporter: :otlp,
+    text_map_propagators: [:trace_context, :baggage],
+    resource: [
+      service: [
+        name: System.get_env("OTEL_SERVICE_NAME", "bot_army"),
+        version: "0.6.0"
+      ]
+    ]
+
+  config :opentelemetry_exporter,
+    otlp_protocol: :http_protobuf,
+    otlp_endpoint: otel_exporter
+else
+  config :opentelemetry,
+    traces_exporter: :none,
+    text_map_propagators: [:trace_context, :baggage]
+end
+
 # Configure Logger
 config :logger,
   level: :info,
