@@ -5,6 +5,8 @@
 
 set -e
 
+MIX_BIN="/Users/abby/.local/share/mise/shims/mix"
+
 echo "🔍 Running pre-push checks..."
 echo ""
 
@@ -16,7 +18,7 @@ if [[ $remote_ref == "refs/heads/main" ]]; then
 
   # Ensure dependencies are up to date
   echo "📦 Installing dependencies..."
-  mix deps.get || {
+  $MIX_BIN deps.get || {
     echo "❌ Failed to install dependencies"
     exit 1
   }
@@ -24,7 +26,7 @@ if [[ $remote_ref == "refs/heads/main" ]]; then
   # Check for compilation issues
   echo ""
   echo "🔨 Compiling code..."
-  mix compile --force || {
+  $MIX_BIN compile --force || {
     echo "❌ Compilation failed - push aborted"
     exit 1
   }
@@ -32,14 +34,14 @@ if [[ $remote_ref == "refs/heads/main" ]]; then
   # Quick linting check
   echo ""
   echo "📝 Running linter..."
-  mix credo --strict || {
+  $MIX_BIN credo --strict || {
     echo "⚠️  Linting issues found (non-blocking, will fail in CI)"
   }
 
   # Build documentation
   echo ""
   echo "📚 Building documentation..."
-  mix docs || {
+  $MIX_BIN docs || {
     echo "⚠️  Documentation build failed (non-blocking)"
   }
 

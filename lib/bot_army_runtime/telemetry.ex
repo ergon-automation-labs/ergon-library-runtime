@@ -6,23 +6,7 @@ defmodule BotArmyRuntime.Telemetry do
   - Ecto query metrics
   - NATS publishing metrics
   - Application-level logging
-  - Error tracking
-
-  ## Configuration
-
-  Automatically started by `BotArmyRuntime.Application` supervision tree.
-
-  Configure loggers in `config.exs`:
-
-      config :logger,
-        backends: [{LoggerJSON.Backends.GoogleCloudLogging, {}}],
-        level: :info
-
-  ## Metrics Collected
-
-  - `ecto.query.total_time` - Ecto query execution time
-  - `nats.publish.total_time` - NATS message publishing time
-  - Errors and exceptions
+  - Error tracking via Sentry (when configured)
   """
 
   use GenServer
@@ -35,11 +19,9 @@ defmodule BotArmyRuntime.Telemetry do
 
   @impl true
   def init(_opts) do
-    # Attach handlers for Ecto
     attach_ecto_handlers()
-
-    # Attach handlers for NATS
     attach_nats_handlers()
+    attach_error_handlers()
 
     Logger.info("[Telemetry] Initialized")
 
@@ -78,6 +60,22 @@ defmodule BotArmyRuntime.Telemetry do
     )
   end
 
+  defp attach_error_handlers do
+    :telemetry.attach(
+      "ecto-query-exception-sentry",
+      [:ecto, :repo, :query, :exception],
+      &handle_sentry_error/4,
+      nil
+    )
+
+    :telemetry.attach(
+      "nats-pub-exception-sentry",
+      [:nats, :pub, :exception],
+      &handle_sentry_error/4,
+      nil
+    )
+  end
+
   def handle_ecto_query(_event, measurements, metadata, _config) do
     query_time_ms = div(measurements.total_time, 1000)
 
@@ -102,7 +100,7 @@ defmodule BotArmyRuntime.Telemetry do
   end
 
   def handle_nats_publish(_event, measurements, metadata, _config) do
-    publish_time_ms = div(measurements.total_time || 0, 1000)
+    publish_time_ms = div(measurements[:duration] || measurements[:total_time] || 0, 1000)
 
     Logger.debug("[NATS] Message published",
       subject: metadata[:subject],
@@ -111,12 +109,34 @@ defmodule BotArmyRuntime.Telemetry do
   end
 
   def handle_nats_error(_event, measurements, metadata, _config) do
-    publish_time_ms = div(measurements.total_time || 0, 1000)
+    publish_time_ms = div(measurements[:duration] || measurements[:total_time] || 0, 1000)
 
     Logger.error("[NATS] Publish failed",
       subject: metadata[:subject],
       publish_time_ms: publish_time_ms,
       error: inspect(metadata[:error])
     )
+  end
+
+  @doc false
+  def handle_sentry_error(_event, _measurements, metadata, _config) do
+    if sentry_configured?() do
+      try do
+        Sentry.capture_exception(metadata[:error],
+          extra: %{
+            source: metadata[:source],
+            repo: metadata[:repo],
+            subject: metadata[:subject]
+          }
+        )
+      rescue
+        _ -> :ok
+      end
+    end
+  end
+
+  defp sentry_configured? do
+    dsn = Application.get_env(:sentry, :dsn)
+    is_binary(dsn) and dsn != "" and dsn != nil
   end
 end

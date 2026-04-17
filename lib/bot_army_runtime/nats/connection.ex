@@ -38,9 +38,18 @@ defmodule BotArmyRuntime.NATS.Connection do
   @default_ping_interval 30_000
   @default_max_reconnect_attempts 10
   @default_reconnect_delay_ms 1000
+  @registry BotArmyRuntime.NATS.ConnectionRegistry
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: @name)
+  end
+
+  def subscribe_to_status do
+    Registry.register(@registry, :nats_status, [])
+  end
+
+  def unsubscribe_from_status do
+    Registry.unregister(@registry, :nats_status)
   end
 
   @impl true
@@ -48,7 +57,8 @@ defmodule BotArmyRuntime.NATS.Connection do
     state = %{
       servers: Keyword.get(opts, :servers, @default_servers),
       ping_interval: Keyword.get(opts, :ping_interval, @default_ping_interval),
-      max_reconnect_attempts: Keyword.get(opts, :max_reconnect_attempts, @default_max_reconnect_attempts),
+      max_reconnect_attempts:
+        Keyword.get(opts, :max_reconnect_attempts, @default_max_reconnect_attempts),
       reconnect_delay_ms: Keyword.get(opts, :reconnect_delay_ms, @default_reconnect_delay_ms),
       connection: nil,
       reconnect_attempts: 0
@@ -62,6 +72,7 @@ defmodule BotArmyRuntime.NATS.Connection do
     case connect(state.servers, state.ping_interval) do
       {:ok, conn} ->
         Logger.info("[NATS] Connection established", servers: inspect(state.servers))
+        broadcast_status(:connected)
         {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
 
       {:error, reason} ->
@@ -82,8 +93,52 @@ defmodule BotArmyRuntime.NATS.Connection do
   @impl true
   def handle_info({:gnat, :disconnected}, state) do
     Logger.warning("[NATS] Connection lost, attempting reconnect")
+    broadcast_status(:disconnected)
     {:ok, new_state} = reconnect(state)
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info({:gnat, :connected}, state) do
+    Logger.info("[NATS] Gnat reports connected")
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(:retry_connect, %{connection: nil} = state) do
+    case connect(state.servers, state.ping_interval) do
+      {:ok, conn} ->
+        Logger.info("[NATS] Reconnected successfully")
+        broadcast_status(:connected)
+        {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
+
+      {:error, reason} ->
+        new_attempts = state.reconnect_attempts + 1
+
+        if new_attempts >= state.max_reconnect_attempts do
+          Logger.error("[NATS] Max reconnect attempts exceeded, degrading",
+            attempts: new_attempts,
+            reason: inspect(reason)
+          )
+
+          {:noreply, %{state | reconnect_attempts: new_attempts}}
+        else
+          delay = calculate_backoff(new_attempts, state.reconnect_delay_ms)
+
+          Logger.warning("[NATS] Reconnection failed, retrying in #{delay}ms",
+            attempt: new_attempts,
+            reason: inspect(reason)
+          )
+
+          Process.send_after(self(), :retry_connect, delay)
+          {:noreply, %{state | reconnect_attempts: new_attempts}}
+        end
+    end
+  end
+
+  @impl true
+  def handle_info(:retry_connect, state) do
+    {:noreply, state}
   end
 
   @impl true
@@ -93,9 +148,9 @@ defmodule BotArmyRuntime.NATS.Connection do
 
   defp connect(servers, ping_interval) do
     case Gnat.start_link(%{
-      servers: servers,
-      ping_interval: ping_interval
-    }) do
+           servers: servers,
+           ping_interval: ping_interval
+         }) do
       {:ok, pid} ->
         {:ok, pid}
 
@@ -106,12 +161,12 @@ defmodule BotArmyRuntime.NATS.Connection do
 
   defp handle_connection_error(state, reason) do
     if state.reconnect_attempts >= state.max_reconnect_attempts do
-      Logger.error("[NATS] Max reconnect attempts exceeded, shutting down",
+      Logger.error("[NATS] Max reconnect attempts exceeded, degrading",
         attempts: state.reconnect_attempts,
         reason: inspect(reason)
       )
 
-      {:stop, :max_reconnect_attempts_exceeded, state}
+      {:noreply, state}
     else
       delay = calculate_backoff(state.reconnect_attempts, state.reconnect_delay_ms)
 
@@ -133,6 +188,7 @@ defmodule BotArmyRuntime.NATS.Connection do
     case connect(state.servers, state.ping_interval) do
       {:ok, conn} ->
         Logger.info("[NATS] Reconnected successfully")
+        broadcast_status(:connected)
         {:ok, %{state | connection: conn, reconnect_attempts: 0}}
 
       {:error, reason} ->
@@ -155,6 +211,18 @@ defmodule BotArmyRuntime.NATS.Connection do
           {:ok, %{state | reconnect_attempts: new_attempts}}
         end
     end
+  end
+
+  defp broadcast_status(status) do
+    Registry.dispatch(@registry, :nats_status, fn entries ->
+      for {pid, _} <- entries, do: send(pid, {:nats, status})
+    end)
+
+    :telemetry.execute(
+      [:nats, :connection, :status],
+      %{status: if(status == :connected, do: 1, else: 0)},
+      %{status: status}
+    )
   end
 
   @doc false

@@ -11,12 +11,17 @@ config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 1
 
-# Test NATS on non-standard port
+# Test NATS on configurable port (default 4223, can override with NATS_PORT)
+test_nats_port = System.get_env("NATS_PORT", "4223") |> String.to_integer()
 config :bot_army_runtime, :nats,
-  servers: [{"localhost", 4223}],
+  servers: [{"localhost", test_nats_port}],
   ping_interval: 5000,
   max_reconnect_attempts: 3,
   reconnect_delay_ms: 100
+
+# Test NATS connection timeout
+config :bot_army_runtime, :nats_connection_timeout,
+  5000
 
 # Log level for tests
 config :logger,

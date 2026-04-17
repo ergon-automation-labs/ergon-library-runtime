@@ -1,4 +1,4 @@
-.PHONY: help install compile test lint format check docs clean setup-hooks
+.PHONY: help install compile test lint format check docs clean setup-hooks health-check-all
 
 help:
 	@echo "Bot Army Runtime development tasks"
@@ -20,6 +20,7 @@ help:
 	@echo "  clean          Clean build artifacts"
 	@echo "  db-setup       Create and migrate test database"
 	@echo "  db-drop        Drop test database"
+	@echo "  health-check   Query all bot health endpoints (NATS dev port 4223)"
 
 install: setup-hooks
 	mix deps.get
@@ -64,5 +65,23 @@ db-setup:
 
 db-drop:
 	mix ecto.drop
+
+# Bot names for health checks
+BOTS := gtd job_applications llm fitness chore terrain learning advocacy sre claude_bridge calendar notification_router context_broker synapse job_scheduler
+
+# Query all bot health endpoints via NATS dev server
+health-check:
+	@echo "Bot Army Health Check (NATS dev port 4223)"
+	@echo "============================================="
+	@for bot in $(BOTS); do \
+		status=$$(nats request --server nats://localhost:4223 bot.$$bot.health '{}' --timeout 3s 2>/dev/null); \
+		if echo "$$status" | grep -q '"status"'; then \
+			health=$$(echo "$$status" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4); \
+			version=$$(echo "$$status" | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4); \
+			printf "  %-22s  %-10s  %s\n" "$$bot" "$$health" "v$$version"; \
+		else \
+			printf "  %-22s  %-10s  %s\n" "$$bot" "OFFLINE" "-"; \
+		fi; \
+	done
 
 .DEFAULT_GOAL := help

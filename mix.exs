@@ -4,7 +4,7 @@ defmodule BotArmyRuntime.MixProject do
   def project do
     [
       app: :bot_army_runtime,
-      version: "0.1.1",
+      version: "0.5.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -22,9 +22,13 @@ defmodule BotArmyRuntime.MixProject do
     [
       {:ecto_sql, "~> 3.10"},
       {:postgrex, "~> 0.17"},
-      {:gnat, "~> 1.2"},
+      {:gnat, "~> 1.6"},
       {:telemetry, "~> 1.2"},
       {:logger_json, "~> 5.1"},
+      {:prom_ex, "~> 1.11"},
+      {:plug_cowboy, "~> 2.7"},
+      {:sentry, "~> 10.0"},
+      {:hackney, "~> 1.20"},
       {:ex_doc, "~> 0.30", only: :dev},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
