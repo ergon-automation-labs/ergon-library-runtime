@@ -32,6 +32,7 @@ config :bcrypt_elixir, :log_rounds, 4
 
 # Disable starting bot_army_runtime application in test environment
 # Individual bot repos will start their own Repos
+# Set to true to run tests that need the metrics endpoint (rare)
 config :bot_army_runtime, :auto_start_services, false
 
 # Use alternative port for tests if metrics endpoint is started

@@ -50,7 +50,7 @@ defmodule BotArmyRuntime.Application do
     {Plug.Cowboy, scheme: :http, plug: BotArmyRuntime.Metrics.Endpoint, options: [port: port]}
   end
 
-  @auto_start_services Application.compile_env(:bot_army_runtime, :auto_start_services, true)
+  @auto_start_services Application.compile_env(:bot_army_runtime, :auto_start_services, false)
 
   defp maybe_add_metrics_endpoint(children) do
     if @auto_start_services do
