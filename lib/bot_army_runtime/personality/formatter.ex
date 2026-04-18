@@ -24,10 +24,10 @@ defmodule BotArmyRuntime.Personality.Formatter do
 
   ## Examples
 
-      iex> Formatter.with_symbol(:gtd_bot, "Inbox cleared")
+      iex> BotArmyRuntime.Personality.Formatter.with_symbol(:gtd_bot, "Inbox cleared")
       "◉ Inbox cleared"
 
-      iex> Formatter.with_symbol(:fitness_bot, "4-day streak")
+      iex> BotArmyRuntime.Personality.Formatter.with_symbol(:fitness_bot, "4-day streak")
       "▲ 4-day streak"
 
   Returns the message with symbol prepended, or the original message if the bot is not registered.
@@ -51,13 +51,13 @@ defmodule BotArmyRuntime.Personality.Formatter do
 
   ## Examples
 
-      iex> Formatter.symbol(:gtd_bot)
+      iex> BotArmyRuntime.Personality.Formatter.symbol(:gtd_bot)
       "◉"
   """
   def symbol(bot_name) when is_atom(bot_name) do
     Identity.symbol(bot_name)
   rescue
-    KeyError ->
+    ArgumentError ->
       Logger.warning("Unknown bot #{bot_name} in symbol lookup")
       ""
   end
