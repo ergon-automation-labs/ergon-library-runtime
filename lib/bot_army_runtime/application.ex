@@ -51,10 +51,15 @@ defmodule BotArmyRuntime.Application do
   end
 
   defp maybe_add_metrics_endpoint(children) do
-    if Application.get_env(:bot_army_runtime, :auto_start_services, true) do
-      children ++ [metrics_endpoint()]
-    else
+    # Skip metrics endpoint in test mode entirely (port conflicts)
+    if Mix.env() == :test do
       children
+    else
+      if Application.get_env(:bot_army_runtime, :auto_start_services, true) do
+        children ++ [metrics_endpoint()]
+      else
+        children
+      end
     end
   end
 end
