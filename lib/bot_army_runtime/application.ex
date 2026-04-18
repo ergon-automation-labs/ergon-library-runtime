@@ -50,13 +50,11 @@ defmodule BotArmyRuntime.Application do
     {Plug.Cowboy, scheme: :http, plug: BotArmyRuntime.Metrics.Endpoint, options: [port: port]}
   end
 
-  @env Mix.env()
-
   defp maybe_add_metrics_endpoint(children) do
-    if @env == :test do
-      children
-    else
+    if Application.get_env(:bot_army_runtime, :auto_start_services, true) do
       children ++ [metrics_endpoint()]
+    else
+      children
     end
   end
 end
