@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.Personality.FormatterTest do
   use ExUnit.Case
+  @moduletag :format
   alias BotArmyRuntime.Personality.Formatter
 
   describe "with_symbol/2" do

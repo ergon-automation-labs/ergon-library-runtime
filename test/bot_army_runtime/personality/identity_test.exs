@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.Personality.IdentityTest do
   use ExUnit.Case
+  @moduletag :format
   doctest BotArmyRuntime.Personality.Identity
 
   alias BotArmyRuntime.Personality.Identity

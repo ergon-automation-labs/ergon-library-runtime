@@ -1,3 +1,4 @@
+ExUnit.configure(exclude: [:integration, :load, :nats_live])
 ExUnit.start()
 
 # Only configure Ecto sandbox if the Repo is available

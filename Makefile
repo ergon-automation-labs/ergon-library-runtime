@@ -1,4 +1,4 @@
-.PHONY: help install compile test lint format check docs clean setup-hooks health-check-all
+.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all
 
 help:
 	@echo "Bot Army Runtime development tasks"
@@ -34,6 +34,21 @@ compile:
 
 test:
 	mix test
+
+test-handlers:
+	MIX_ENV=test mix test --only handlers --trace
+
+test-stores:
+	MIX_ENV=test mix test --only stores --trace
+
+test-nats:
+	MIX_ENV=test mix test --only nats --trace
+
+test-integration:
+	mix test --include integration --trace
+
+test-full:
+	mix test --include integration --include nats_live --trace
 
 test-watch:
 	mix test.watch

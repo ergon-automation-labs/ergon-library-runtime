@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.TelemetryTest do
   use ExUnit.Case, async: false
+  @moduletag :core
 
   import ExUnit.CaptureLog
 

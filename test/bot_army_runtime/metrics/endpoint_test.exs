@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.Metrics.EndpointTest do
   use ExUnit.Case, async: true
+  @moduletag :core
 
   import Plug.Test
   import Plug.Conn

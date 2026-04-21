@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.Health.ResponderTest do
   use ExUnit.Case, async: false
+  @moduletag :core
 
   alias BotArmyRuntime.Health.Responder
 

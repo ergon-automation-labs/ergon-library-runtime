@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.NATS.DedupTest do
   use ExUnit.Case, async: false
+  @moduletag :nats
 
   alias BotArmyRuntime.NATS.Dedup
 

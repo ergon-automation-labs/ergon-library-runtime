@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.TracingTest do
   use ExUnit.Case, async: false
+  @moduletag :core
 
   alias BotArmyRuntime.Tracing
 
