@@ -28,15 +28,20 @@ defmodule BotArmyRuntime.Telemetry do
     {:ok, %{}}
   end
 
+  defp safe_attach(handler_id, event_name, handler, config) do
+    :telemetry.detach(handler_id)
+    :telemetry.attach(handler_id, event_name, handler, config)
+  end
+
   defp attach_ecto_handlers do
-    :telemetry.attach(
+    safe_attach(
       "ecto-query-logging",
       [:ecto, :repo, :query],
       &handle_ecto_query/4,
       nil
     )
 
-    :telemetry.attach(
+    safe_attach(
       "ecto-query-error",
       [:ecto, :repo, :query, :exception],
       &handle_ecto_error/4,
@@ -45,14 +50,14 @@ defmodule BotArmyRuntime.Telemetry do
   end
 
   defp attach_nats_handlers do
-    :telemetry.attach(
+    safe_attach(
       "nats-publish-success",
       [:nats, :pub],
       &handle_nats_publish/4,
       nil
     )
 
-    :telemetry.attach(
+    safe_attach(
       "nats-publish-error",
       [:nats, :pub, :exception],
       &handle_nats_error/4,
@@ -61,14 +66,14 @@ defmodule BotArmyRuntime.Telemetry do
   end
 
   defp attach_error_handlers do
-    :telemetry.attach(
+    safe_attach(
       "ecto-query-exception-sentry",
       [:ecto, :repo, :query, :exception],
       &handle_sentry_error/4,
       nil
     )
 
-    :telemetry.attach(
+    safe_attach(
       "nats-pub-exception-sentry",
       [:nats, :pub, :exception],
       &handle_sentry_error/4,
