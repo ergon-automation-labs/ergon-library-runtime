@@ -2,7 +2,8 @@ import Config
 
 # Configure auto_start_services (default: false)
 # Set to true when starting the application manually (not via supervisor)
-config :bot_army_runtime, :auto_start_services, false
+# Note: This must match the runtime config value in bot_army_gtd/config/runtime.exs
+config :bot_army_runtime, :auto_start_services, true
 
 # Configure Ecto
 config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
