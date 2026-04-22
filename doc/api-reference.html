@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="bot_army_runtime v0.7.1">
+
+
+    <title>API Reference — bot_army_runtime v0.7.1</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-0B00BEB6.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="api-reference.html" class="sidebar-projectName" translate="no">
+bot_army_runtime
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.7.1
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of bot_army_runtime</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>API Reference <small class="app-vsn">bot_army_runtime v#0.7.1</small></h1>
+<a href="api-reference.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+  </div>
+
+    <section class="details-list">
+      <h2 id="modules" class="section-heading">Modules</h2>
+      <div class="summary">
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmy.Pulse.html" translate="no">BotArmy.<wbr>Pulse</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Pulse publishing module.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmy.Soul.html" translate="no">BotArmy.<wbr>Soul</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Soul storage and retrieval module.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.html" translate="no">BotArmyRuntime</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>BotArmyRuntime provides the shared persistence and messaging foundation for the Bot Army ecosystem.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Application.html" translate="no">BotArmyRuntime.<wbr>Application</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Supervision tree for BotArmyRuntime.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Ecto.Repo.html" translate="no">BotArmyRuntime.<wbr>Ecto.<wbr>Repo</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Base Ecto Repository for Bot Army services.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Health.Monitor.html" translate="no">BotArmyRuntime.<wbr>Health.<wbr>Monitor</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Monitors bot heartbeats and publishes alerts when bots go stale.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Health.Responder.html" translate="no">BotArmyRuntime.<wbr>Health.<wbr>Responder</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Shared health check responder for Bot Army services.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Logging.html" translate="no">BotArmyRuntime.<wbr>Logging</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Helper for any bot to record structured activity entries to the GTD daily log.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Metrics.Endpoint.html" translate="no">BotArmyRuntime.<wbr>Metrics.<wbr>Endpoint</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>HTTP endpoint serving Prometheus metrics at /metrics on port 9090.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Metrics.PromExPlugin.html" translate="no">BotArmyRuntime.<wbr>Metrics.<wbr>PromExPlugin</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Custom PromEx plugin for Bot Army NATS and connection metrics.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.NATS.Connection.html" translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Connection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Manages the connection to the NATS message bus.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.NATS.Dedup.html" translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Dedup</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>ETS-based sliding window deduplication for NATS events.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.NATS.JetStream.html" translate="no">BotArmyRuntime.<wbr>NATS.<wbr>JetStream</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>JetStream stream and consumer management for Bot Army services.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.NATS.Publisher.html" translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Publisher</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Publishes messages to NATS.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Personality.Formatter.html" translate="no">BotArmyRuntime.<wbr>Personality.<wbr>Formatter</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Message formatter with bot personality symbols.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Personality.Identity.html" translate="no">BotArmyRuntime.<wbr>Personality.<wbr>Identity</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Bot Army personality symbols registry.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.PromEx.html" translate="no">BotArmyRuntime.<wbr>PromEx</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>PromEx module for Bot Army metrics collection.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Telemetry.html" translate="no">BotArmyRuntime.<wbr>Telemetry</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Sets up telemetry handlers for observability across Bot Army services.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Tenant.html" translate="no">BotArmyRuntime.<wbr>Tenant</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Tenant management utilities for multi-tenancy support.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="BotArmyRuntime.Tracing.html" translate="no">BotArmyRuntime.<wbr>Tracing</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>OpenTelemetry distributed tracing integration for NATS message flows.</p></div>
+
+</div>
+
+      </div>
+    </section>
+
+
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="bot_army_runtime.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

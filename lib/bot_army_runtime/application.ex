@@ -36,7 +36,10 @@ defmodule BotArmyRuntime.Application do
         {BotArmyRuntime.NATS.Connection, []},
 
         # NATS message deduplication (ETS sliding window)
-        {BotArmyRuntime.NATS.Dedup, []}
+        {BotArmyRuntime.NATS.Dedup, []},
+
+        # Health monitor (stale bot detection)
+        {BotArmyRuntime.Health.Monitor, []}
       ]
       |> maybe_add_metrics_endpoint()
 
