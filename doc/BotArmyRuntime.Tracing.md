@@ -19,7 +19,7 @@ to enable trace export. If unset, the noop exporter is used.
 
 ## Usage (Consumer)
 
-    BotArmyRuntime.Tracing.with_consumer_span(msg.topic, msg.headers, fn ->
+    BotArmyRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers), fn ->
       # process message
     end)
 

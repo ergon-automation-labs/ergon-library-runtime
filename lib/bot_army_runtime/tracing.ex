@@ -19,7 +19,7 @@ defmodule BotArmyRuntime.Tracing do
 
   ## Usage (Consumer)
 
-      BotArmyRuntime.Tracing.with_consumer_span(msg.topic, msg.headers, fn ->
+      BotArmyRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers), fn ->
         # process message
       end)
   """
@@ -66,6 +66,7 @@ defmodule BotArmyRuntime.Tracing do
     - `fun` - 0-arity function to execute within the span
   """
   def with_consumer_span(subject, headers, fun) when is_function(fun, 0) do
+    headers = headers || []
     extract_trace_context(headers)
 
     span =

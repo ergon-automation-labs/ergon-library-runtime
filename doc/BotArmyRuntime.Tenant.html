@@ -5,10 +5,10 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.7.1">
+    <meta name="project" content="bot_army_runtime v0.7.3">
 
 
-    <title>BotArmyRuntime.Tenant — bot_army_runtime v0.7.1</title>
+    <title>BotArmyRuntime.Tenant — bot_army_runtime v0.7.3</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.7.1
+          v0.7.3
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmyRuntime.<wbr>Tenant</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.1)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.3)</small>
 
     </h1>
 
@@ -114,13 +114,13 @@ ecosystem, including the default tenant ID and tenant-aware subject routing.</p>
 single-tenant case that existing bots handle.</p><h2 id="module-subject-prefixing" class="section-heading"><a href="#module-subject-prefixing" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Subject Prefixing</span></h2><p>Tenant-specific NATS subjects follow the pattern:</p><pre><code class="makeup elixir" translate="no"><span class="n">tenant</span><span class="o">.</span><span class="o">&lt;</span><span class="n">tenant_id</span><span class="o">&gt;</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="o">*</span><span class="w">
 </span><span class="n">tenant</span><span class="o">.</span><span class="o">&lt;</span><span class="n">tenant_id</span><span class="o">&gt;</span><span class="o">.</span><span class="n">gtd</span><span class="o">.</span><span class="o">*</span><span class="w">
 </span><span class="n">etc</span><span class="o">.</span></code></pre><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><pre><code class="makeup elixir" translate="no"><span class="c1"># Get the default tenant ID</span><span class="w">
-</span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">default_tenant_id</span><span class="p" data-group-id="0826496690-1">(</span><span class="p" data-group-id="0826496690-1">)</span><span class="w">
+</span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">default_tenant_id</span><span class="p" data-group-id="6583579447-1">(</span><span class="p" data-group-id="6583579447-1">)</span><span class="w">
 
 </span><span class="c1"># Build a tenant-aware subject</span><span class="w">
-</span><span class="n">subject</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">subject</span><span class="p" data-group-id="0826496690-2">(</span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;default&quot;</span><span class="p" data-group-id="0826496690-2">)</span><span class="w">
+</span><span class="n">subject</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">subject</span><span class="p" data-group-id="6583579447-2">(</span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;default&quot;</span><span class="p" data-group-id="6583579447-2">)</span><span class="w">
 
 </span><span class="c1"># Extract tenant from a subject</span><span class="w">
-</span><span class="n">tenant_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">from_subject</span><span class="p" data-group-id="0826496690-3">(</span><span class="s">&quot;tenant.abc123.gtd.tasks&quot;</span><span class="p" data-group-id="0826496690-3">)</span></code></pre>
+</span><span class="n">tenant_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">from_subject</span><span class="p" data-group-id="6583579447-3">(</span><span class="s">&quot;tenant.abc123.gtd.tasks&quot;</span><span class="p" data-group-id="6583579447-3">)</span></code></pre>
     </section>
 
 </div>
@@ -235,10 +235,10 @@ SaaS tenants will have unique UUIDs assigned at provisioning.</p>
 
   <section class="docstring">
 
-<p>Extracts tenant ID from a tenant-prefixed subject.</p><p>Returns <code class="inline">nil</code> if the subject doesn't match the tenant prefix pattern.</p><h2 id="from_subject/1-examples" class="section-heading"><a href="#from_subject/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">from_subject</span><span class="p" data-group-id="1562788515-1">(</span><span class="s">&quot;tenant.default.gtd.tasks&quot;</span><span class="p" data-group-id="1562788515-1">)</span><span class="w">
+<p>Extracts tenant ID from a tenant-prefixed subject.</p><p>Returns <code class="inline">nil</code> if the subject doesn't match the tenant prefix pattern.</p><h2 id="from_subject/1-examples" class="section-heading"><a href="#from_subject/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">from_subject</span><span class="p" data-group-id="4223024361-1">(</span><span class="s">&quot;tenant.default.gtd.tasks&quot;</span><span class="p" data-group-id="4223024361-1">)</span><span class="w">
 </span><span class="s">&quot;default&quot;</span><span class="w">
 
-</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">from_subject</span><span class="p" data-group-id="1562788515-2">(</span><span class="s">&quot;gtd.tasks&quot;</span><span class="p" data-group-id="1562788515-2">)</span><span class="w">
+</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">from_subject</span><span class="p" data-group-id="4223024361-2">(</span><span class="s">&quot;gtd.tasks&quot;</span><span class="p" data-group-id="4223024361-2">)</span><span class="w">
 </span><span class="no">nil</span></code></pre>
   </section>
 </section>
@@ -257,10 +257,10 @@ SaaS tenants will have unique UUIDs assigned at provisioning.</p>
 
   <section class="docstring">
 
-<p>Strips the tenant prefix from a subject, returning the core subject.</p><p>Returns <code class="inline">nil</code> if the subject is not tenant-prefixed.</p><h2 id="strip_tenant_prefix/1-examples" class="section-heading"><a href="#strip_tenant_prefix/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">strip_tenant_prefix</span><span class="p" data-group-id="4318751174-1">(</span><span class="s">&quot;tenant.00000000-0000-0000-0000-000000000001.gtd.tasks&quot;</span><span class="p" data-group-id="4318751174-1">)</span><span class="w">
+<p>Strips the tenant prefix from a subject, returning the core subject.</p><p>Returns <code class="inline">nil</code> if the subject is not tenant-prefixed.</p><h2 id="strip_tenant_prefix/1-examples" class="section-heading"><a href="#strip_tenant_prefix/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">strip_tenant_prefix</span><span class="p" data-group-id="2657609882-1">(</span><span class="s">&quot;tenant.00000000-0000-0000-0000-000000000001.gtd.tasks&quot;</span><span class="p" data-group-id="2657609882-1">)</span><span class="w">
 </span><span class="s">&quot;gtd.tasks&quot;</span><span class="w">
 
-</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">strip_tenant_prefix</span><span class="p" data-group-id="4318751174-2">(</span><span class="s">&quot;gtd.tasks&quot;</span><span class="p" data-group-id="4318751174-2">)</span><span class="w">
+</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">strip_tenant_prefix</span><span class="p" data-group-id="2657609882-2">(</span><span class="s">&quot;gtd.tasks&quot;</span><span class="p" data-group-id="2657609882-2">)</span><span class="w">
 </span><span class="no">nil</span></code></pre>
   </section>
 </section>
@@ -279,10 +279,10 @@ SaaS tenants will have unique UUIDs assigned at provisioning.</p>
 
   <section class="docstring">
 
-<p>Builds a tenant-prefixed NATS subject.</p><h2 id="subject/2-examples" class="section-heading"><a href="#subject/2-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">subject</span><span class="p" data-group-id="0122190147-1">(</span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;00000000-0000-0000-0000-000000000001&quot;</span><span class="p" data-group-id="0122190147-1">)</span><span class="w">
+<p>Builds a tenant-prefixed NATS subject.</p><h2 id="subject/2-examples" class="section-heading"><a href="#subject/2-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">subject</span><span class="p" data-group-id="3045732211-1">(</span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;00000000-0000-0000-0000-000000000001&quot;</span><span class="p" data-group-id="3045732211-1">)</span><span class="w">
 </span><span class="s">&quot;tenant.00000000-0000-0000-0000-000000000001.gtd.task.list&quot;</span><span class="w">
 
-</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">subject</span><span class="p" data-group-id="0122190147-2">(</span><span class="s">&quot;dungeon.session.start&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;acme-corp&quot;</span><span class="p" data-group-id="0122190147-2">)</span><span class="w">
+</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">subject</span><span class="p" data-group-id="3045732211-2">(</span><span class="s">&quot;dungeon.session.start&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;acme-corp&quot;</span><span class="p" data-group-id="3045732211-2">)</span><span class="w">
 </span><span class="s">&quot;tenant.acme-corp.dungeon.session.start&quot;</span></code></pre>
   </section>
 </section>
@@ -301,10 +301,10 @@ SaaS tenants will have unique UUIDs assigned at provisioning.</p>
 
   <section class="docstring">
 
-<p>Checks if a subject is tenant-prefixed.</p><h2 id="tenant_subject?/1-examples" class="section-heading"><a href="#tenant_subject?/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">tenant_subject?</span><span class="p" data-group-id="7625829012-1">(</span><span class="s">&quot;tenant.00000000-0000-0000-0000-000000000001.gtd.tasks&quot;</span><span class="p" data-group-id="7625829012-1">)</span><span class="w">
+<p>Checks if a subject is tenant-prefixed.</p><h2 id="tenant_subject?/1-examples" class="section-heading"><a href="#tenant_subject?/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">tenant_subject?</span><span class="p" data-group-id="8270967350-1">(</span><span class="s">&quot;tenant.00000000-0000-0000-0000-000000000001.gtd.tasks&quot;</span><span class="p" data-group-id="8270967350-1">)</span><span class="w">
 </span><span class="no">true</span><span class="w">
 
-</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">tenant_subject?</span><span class="p" data-group-id="7625829012-2">(</span><span class="s">&quot;gtd.tasks&quot;</span><span class="p" data-group-id="7625829012-2">)</span><span class="w">
+</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmyRuntime.Tenant</span><span class="o">.</span><span class="n">tenant_subject?</span><span class="p" data-group-id="8270967350-2">(</span><span class="s">&quot;gtd.tasks&quot;</span><span class="p" data-group-id="8270967350-2">)</span><span class="w">
 </span><span class="no">false</span></code></pre>
   </section>
 </section>

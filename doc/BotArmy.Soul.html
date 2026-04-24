@@ -5,10 +5,10 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.7.1">
+    <meta name="project" content="bot_army_runtime v0.7.3">
 
 
-    <title>BotArmy.Soul — bot_army_runtime v0.7.1</title>
+    <title>BotArmy.Soul — bot_army_runtime v0.7.3</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.7.1
+          v0.7.3
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmy.<wbr>Soul</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.1)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.3)</small>
 
     </h1>
 
@@ -131,13 +131,13 @@ priorities, and refusal rules. Stored as JSONB in PostgreSQL.</p><h2 id="module-
   inserted_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );</code></pre><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><pre><code class="makeup elixir" translate="no"><span class="c1"># Get the current soul for a bot</span><span class="w">
-</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="2017938862-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="2017938862-1">)</span><span class="w">
+</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="6420442944-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="6420442944-1">)</span><span class="w">
 
 </span><span class="c1"># Get soul for a specific tenant</span><span class="w">
-</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="2017938862-2">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid-here&quot;</span><span class="p" data-group-id="2017938862-2">)</span><span class="w">
+</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="6420442944-2">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid-here&quot;</span><span class="p" data-group-id="6420442944-2">)</span><span class="w">
 
 </span><span class="c1"># Update soul config</span><span class="w">
-</span><span class="p" data-group-id="2017938862-3">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="bp">_</span><span class="p" data-group-id="2017938862-3">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">update</span><span class="p" data-group-id="2017938862-4">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="2017938862-5">%{</span><span class="ss">tone</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;more sarcastic&quot;</span><span class="p" data-group-id="2017938862-5">}</span><span class="p" data-group-id="2017938862-4">)</span></code></pre>
+</span><span class="p" data-group-id="6420442944-3">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="bp">_</span><span class="p" data-group-id="6420442944-3">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">update</span><span class="p" data-group-id="6420442944-4">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="6420442944-5">%{</span><span class="ss">tone</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;more sarcastic&quot;</span><span class="p" data-group-id="6420442944-5">}</span><span class="p" data-group-id="6420442944-4">)</span></code></pre>
     </section>
 
 </div>
@@ -261,11 +261,11 @@ priorities, and refusal rules. Stored as JSONB in PostgreSQL.</p><h2 id="module-
 
       </div>
 
-<p>Get the current soul for a bot.</p><p>Returns the active soul with the highest version for the given bot and tenant.</p><h2 id="get/2-examples" class="section-heading"><a href="#get/2-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="7278834757-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="7278834757-1">)</span><span class="w">
-</span><span class="p" data-group-id="7278834757-2">%</span><span class="nc" data-group-id="7278834757-2">BotArmy.Soul</span><span class="p" data-group-id="7278834757-2">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="7278834757-3">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="7278834757-4">%{</span><span class="n">...</span><span class="p" data-group-id="7278834757-4">}</span><span class="p" data-group-id="7278834757-3">}</span><span class="p" data-group-id="7278834757-2">}</span><span class="w">
+<p>Get the current soul for a bot.</p><p>Returns the active soul with the highest version for the given bot and tenant.</p><h2 id="get/2-examples" class="section-heading"><a href="#get/2-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="9885857887-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="9885857887-1">)</span><span class="w">
+</span><span class="p" data-group-id="9885857887-2">%</span><span class="nc" data-group-id="9885857887-2">BotArmy.Soul</span><span class="p" data-group-id="9885857887-2">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="9885857887-3">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="9885857887-4">%{</span><span class="n">...</span><span class="p" data-group-id="9885857887-4">}</span><span class="p" data-group-id="9885857887-3">}</span><span class="p" data-group-id="9885857887-2">}</span><span class="w">
 
-</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="7278834757-5">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid&quot;</span><span class="p" data-group-id="7278834757-5">)</span><span class="w">
-</span><span class="p" data-group-id="7278834757-6">%</span><span class="nc" data-group-id="7278834757-6">BotArmy.Soul</span><span class="p" data-group-id="7278834757-6">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="7278834757-7">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="7278834757-8">%{</span><span class="n">...</span><span class="p" data-group-id="7278834757-8">}</span><span class="p" data-group-id="7278834757-7">}</span><span class="p" data-group-id="7278834757-6">}</span></code></pre>
+</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="9885857887-5">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid&quot;</span><span class="p" data-group-id="9885857887-5">)</span><span class="w">
+</span><span class="p" data-group-id="9885857887-6">%</span><span class="nc" data-group-id="9885857887-6">BotArmy.Soul</span><span class="p" data-group-id="9885857887-6">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="9885857887-7">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="9885857887-8">%{</span><span class="n">...</span><span class="p" data-group-id="9885857887-8">}</span><span class="p" data-group-id="9885857887-7">}</span><span class="p" data-group-id="9885857887-6">}</span></code></pre>
   </section>
 </section>
 <section class="detail" id="publish/2">

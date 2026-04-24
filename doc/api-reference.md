@@ -1,4 +1,4 @@
-# bot_army_runtime v0.7.1 - API Reference
+# bot_army_runtime v0.7.3 - API Reference
 
 ## Modules
 
