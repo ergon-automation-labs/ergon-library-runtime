@@ -5,8 +5,10 @@ defmodule BotArmyRuntime.Health.Responder do
   Subscribes to `bot.<bot_name>.health` on NATS (request/reply pattern).
   Reports NATS connectivity, database connectivity, key process liveness, and version.
 
-  Re-registers with ConnectionRegistry on reconnect so the health subscription
-  is always active.
+  Also provides subject registry: `bot.<bot_name>.subjects` returns metadata about
+  what subjects this bot handles (request/reply and subscriptions).
+
+  Re-registers with ConnectionRegistry on reconnect so subscriptions are always active.
   """
 
   use GenServer
@@ -16,7 +18,22 @@ defmodule BotArmyRuntime.Health.Responder do
   @reconnect_delay_ms 5_000
 
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts)
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @doc """
+  Register subjects that this bot handles.
+
+  subjects should be a list of maps:
+  ```
+  [
+    %{subject: "gtd.task.list", type: :request_reply, description: "List tasks"},
+    %{subject: "events.gtd.task.>", type: :subscribe, description: "Task events"}
+  ]
+  ```
+  """
+  def register_subjects(subjects) when is_list(subjects) do
+    GenServer.cast(__MODULE__, {:register_subjects, subjects})
   end
 
   @impl true
@@ -26,8 +43,10 @@ defmodule BotArmyRuntime.Health.Responder do
       repo: Keyword.get(opts, :repo),
       process_names: Keyword.get(opts, :process_names, []),
       version: Keyword.get(opts, :version, "unknown"),
+      subjects: [],
       connection: nil,
-      subscription: nil
+      health_subscription: nil,
+      subjects_subscription: nil
     }
 
     {:ok, state, {:continue, :connect}}
@@ -52,14 +71,22 @@ defmodule BotArmyRuntime.Health.Responder do
   defp connect_existing(state) do
     case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
       {:ok, conn} ->
-        subject = "bot.#{state.bot_name}.health"
+        health_subject = "bot.#{state.bot_name}.health"
+        subjects_subject = "bot.#{state.bot_name}.subjects"
 
-        case Gnat.sub(conn, self(), subject) do
-          {:ok, subscription} ->
-            BotArmyRuntime.NATS.Connection.subscribe_to_status()
-            Logger.info("[Health] Subscribed to #{subject}")
-            {:noreply, %{state | connection: conn, subscription: subscription}}
+        with {:ok, health_sub} <- Gnat.sub(conn, self(), health_subject),
+             {:ok, subjects_sub} <- Gnat.sub(conn, self(), subjects_subject) do
+          BotArmyRuntime.NATS.Connection.subscribe_to_status()
+          Logger.info("[Health] Subscribed to #{health_subject} and #{subjects_subject}")
 
+          {:noreply,
+           %{
+             state
+             | connection: conn,
+               health_subscription: health_sub,
+               subjects_subscription: subjects_sub
+           }}
+        else
           {:error, reason} ->
             Logger.warning("[Health] Failed to subscribe: #{inspect(reason)}")
             Process.send_after(self(), :reconnect, @reconnect_delay_ms)
@@ -74,20 +101,20 @@ defmodule BotArmyRuntime.Health.Responder do
   end
 
   @impl true
-  def handle_info({:msg, %{reply_to: reply_to}}, state) when not is_nil(reply_to) do
-    health = %{
-      status: compute_overall_status(state),
-      bot: state.bot_name,
-      version: state.version,
-      timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
-      checks: %{
-        nats: check_nats(),
-        database: check_db(state.repo),
-        processes: check_processes(state.process_names)
-      }
-    }
+  def handle_info({:msg, %{topic: topic, reply_to: reply_to}}, state) when not is_nil(reply_to) do
+    payload =
+      case topic do
+        "bot." <> _ ->
+          if String.ends_with?(topic, ".health") do
+            build_health_response(state)
+          else
+            build_subjects_response(state)
+          end
 
-    payload = Jason.encode!(health)
+        _ ->
+          Jason.encode!(%{"ok" => false, "error" => "unknown_subject"})
+      end
+
     Gnat.pub(state.connection, reply_to, payload)
     {:noreply, state}
   end
@@ -98,10 +125,14 @@ defmodule BotArmyRuntime.Health.Responder do
   end
 
   @impl true
+  def handle_cast({:register_subjects, subjects}, state) do
+    {:noreply, %{state | subjects: subjects}}
+  end
+
+  @impl true
   def handle_info({:nats, :disconnected}, state) do
     Logger.warning("[Health] NATS disconnected, scheduling reconnect")
-    Process.send_after(self(), :reconnect, @reconnect_delay_ms)
-    {:noreply, %{state | connection: nil, subscription: nil}}
+    {:noreply, %{state | connection: nil, health_subscription: nil, subjects_subscription: nil}}
   end
 
   @impl true
@@ -168,5 +199,32 @@ defmodule BotArmyRuntime.Health.Responder do
       end)
 
     if all_alive, do: :ok, else: :error
+  end
+
+  defp build_health_response(state) do
+    health = %{
+      status: compute_overall_status(state),
+      bot: state.bot_name,
+      version: state.version,
+      timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+      checks: %{
+        nats: check_nats(),
+        database: check_db(state.repo),
+        processes: check_processes(state.process_names)
+      }
+    }
+
+    Jason.encode!(health)
+  end
+
+  defp build_subjects_response(state) do
+    response = %{
+      "ok" => true,
+      "data" => state.subjects,
+      "schema_version" => "1.0",
+      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    Jason.encode!(response)
   end
 end

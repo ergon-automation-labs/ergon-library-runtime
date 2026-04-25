@@ -1,0 +1,75 @@
+defmodule BotArmyRuntime.NATS.Reply do
+  @moduledoc """
+  Standardized response format for NATS request/reply handlers.
+
+  All request/reply handlers should return responses using these helpers
+  to ensure consistent format across the fleet:
+
+  ```
+  {:ok, Gnat.pub(conn, reply_to, Reply.ok(data))}
+  {:ok, Gnat.pub(conn, reply_to, Reply.error("invalid input", :validation_error))}
+  ```
+
+  Response format:
+  ```json
+  {
+    "ok": true,
+    "data": {...},
+    "schema_version": "1.0",
+    "timestamp": "2026-04-25T..."
+  }
+  ```
+
+  or on error:
+  ```json
+  {
+    "ok": false,
+    "error": "human readable message",
+    "code": "error_code_atom",
+    "schema_version": "1.0",
+    "timestamp": "2026-04-25T..."
+  }
+  ```
+  """
+
+  @schema_version "1.0"
+
+  @doc """
+  Build a success response.
+
+  Returns JSON-encoded binary ready to send via Gnat.pub/3.
+  """
+  def ok(data) do
+    response = %{
+      "ok" => true,
+      "data" => data,
+      "schema_version" => @schema_version,
+      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    Jason.encode!(response)
+  end
+
+  @doc """
+  Build an error response.
+
+  code is optional and should be an atom (e.g., :validation_error, :not_found).
+  """
+  def error(message, code \\ nil) when is_binary(message) do
+    response = %{
+      "ok" => false,
+      "error" => message,
+      "schema_version" => @schema_version,
+      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    response =
+      if code do
+        Map.put(response, "code", Atom.to_string(code))
+      else
+        response
+      end
+
+    Jason.encode!(response)
+  end
+end

@@ -81,13 +81,13 @@ defmodule BotArmyRuntime.Health.Monitor do
   def handle_continue(:connect, state) do
     case get_nats_connection() do
       {:ok, conn} ->
-        case Gnat.sub(conn, self(), "bot.army.health.>") do
-          {:ok, sub} ->
-            BotArmyRuntime.NATS.Connection.subscribe_to_status()
-            Logger.info("[Health.Monitor] Subscribed to bot.army.health.>")
-            schedule_check()
-            {:noreply, %{state | connection: conn, subscription: sub}}
-
+        with {:ok, health_sub} <- Gnat.sub(conn, self(), "bot.army.health.>"),
+             {:ok, subjects_sub} <- Gnat.sub(conn, self(), "bot.army.subjects") do
+          BotArmyRuntime.NATS.Connection.subscribe_to_status()
+          Logger.info("[Health.Monitor] Subscribed to bot.army.health.> and bot.army.subjects")
+          schedule_check()
+          {:noreply, %{state | connection: conn, subscription: {health_sub, subjects_sub}}}
+        else
           {:error, reason} ->
             Logger.warning("[Health.Monitor] Subscription failed: #{inspect(reason)}")
             Process.send_after(self(), :reconnect, @reconnect_delay_ms)
@@ -99,6 +99,23 @@ defmodule BotArmyRuntime.Health.Monitor do
         Process.send_after(self(), :reconnect, @reconnect_delay_ms)
         {:noreply, state}
     end
+  end
+
+  @impl true
+  def handle_info({:msg, %{topic: "bot.army.subjects", reply_to: reply_to}}, state)
+      when not is_nil(reply_to) do
+    subjects_by_bot = aggregate_subjects()
+
+    response = %{
+      "ok" => true,
+      "data" => subjects_by_bot,
+      "schema_version" => "1.0",
+      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    payload = Jason.encode!(response)
+    Gnat.pub(state.connection, reply_to, payload)
+    {:noreply, state}
   end
 
   @impl true
@@ -218,5 +235,39 @@ defmodule BotArmyRuntime.Health.Monitor do
     DateTime.utc_now()
     |> DateTime.add(-offset, :millisecond)
     |> DateTime.to_iso8601()
+  end
+
+  defp aggregate_subjects do
+    # Query each known bot for its subjects via bot.<name>.subjects
+    list_bots()
+    |> Enum.map(fn {bot_id, _last_seen, _status} -> bot_id end)
+    |> Enum.reduce(%{}, fn bot_id, acc ->
+      case query_bot_subjects(bot_id) do
+        {:ok, subjects} -> Map.put(acc, bot_id, subjects)
+        {:error, _} -> acc
+      end
+    end)
+  end
+
+  defp query_bot_subjects(bot_id) do
+    case get_nats_connection() do
+      {:ok, conn} ->
+        subject = "bot.#{bot_id}.subjects"
+
+        case Gnat.request(conn, subject, "{}", timeout: 2000) do
+          {:ok, %{body: body}} ->
+            case Jason.decode(body) do
+              {:ok, %{"data" => data}} -> {:ok, data}
+              {:ok, resp} -> {:ok, resp}
+              {:error, _} -> {:error, :decode}
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 end
