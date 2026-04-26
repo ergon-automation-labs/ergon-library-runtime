@@ -38,6 +38,9 @@ defmodule BotArmyRuntime.Application do
         # NATS message deduplication (ETS sliding window)
         {BotArmyRuntime.NATS.Dedup, []},
 
+        # Service discovery registry (in-memory bot registry with heartbeat detection)
+        {BotArmyRuntime.Registry, []},
+
         # Health monitor (stale bot detection)
         {BotArmyRuntime.Health.Monitor, []}
       ]
