@@ -134,6 +134,36 @@ When modifying:
 - Log levels should match event severity
 - Include enough context for debugging
 
+### 5. Service Discovery Registry
+
+In-memory registry of all active bots and their NATS subjects. Enables service discovery so clients can query what endpoints are available.
+
+**How bots register:**
+```elixir
+# On startup, call:
+subjects = [
+  %{subject: "gtd.task.create", type: :request_reply, description: "Create task"},
+  %{subject: "gtd.task.list", type: :request_reply, description: "List tasks"}
+]
+BotArmyRuntime.Registry.register("gtd", subjects)
+```
+
+**Public API:**
+- `register(bot_name, subjects)` - Register or update a bot's subjects
+- `deregister(bot_name)` - Deregister a bot
+- `list_bots(filter \\ nil)` - Get all registered bots
+- `get_bot(bot_name)` - Get details for a specific bot
+
+**NATS Endpoints:**
+- `bot_army.registry.bots.list` - Request/reply to list all bots
+- `bot_army.registry.bot.get` - Request/reply to get specific bot (requires `bot_name` in JSON body)
+
+**When modifying:**
+- Heartbeat detection runs every 30s, removes bots offline for 40s+
+- Each subject must have: subject, type (:request_reply or :subscribe), and optional description/timeout_ms
+- Responses follow standard JSON envelope: `{ok: bool, ...data, timestamp: ISO8601}`
+- All bots should register in their Consumer or HealthResponder on NATS connection
+
 ## Development Commands
 
 ```bash
