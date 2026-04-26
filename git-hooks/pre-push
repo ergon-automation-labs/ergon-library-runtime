@@ -56,6 +56,7 @@ if [[ $remote_ref == "refs/heads/main" ]]; then
     --exclude=".git" \
     --exclude="_build" \
     --exclude="deps" \
+    --exclude="*.tar.gz" \
     --exclude=".beam" \
     --exclude="erl_crash.dump" \
     lib/ mix.* . || {
