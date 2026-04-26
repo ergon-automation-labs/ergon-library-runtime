@@ -8,7 +8,7 @@
     <meta name="project" content="bot_army_runtime v0.7.4">
 
 
-    <title>BotArmyRuntime.Health.Monitor — bot_army_runtime v0.7.4</title>
+    <title>BotArmyRuntime.Registry — bot_army_runtime v0.7.4</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -93,12 +93,12 @@ bot_army_runtime
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">BotArmyRuntime.<wbr>Health.<wbr>Monitor</span> 
+      <span translate="no">BotArmyRuntime.<wbr>Registry</span> 
       <small class="app-vsn" translate="no">(bot_army_runtime v0.7.4)</small>
 
     </h1>
 
-<a href="BotArmyRuntime.Health.Monitor.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="BotArmyRuntime.Registry.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
@@ -109,11 +109,8 @@ bot_army_runtime
 
 
     <section id="moduledoc">
-<p>Monitors bot heartbeats and publishes alerts when bots go stale.</p><p>Subscribes to <code class="inline">bot.army.health.&gt;</code> on NATS, tracks last-seen timestamps
-in ETS, and checks every 30s for entries older than 60s. Stale bots
-get an alert published to <code class="inline">bot.army.health.stale</code>; recovery events
-go to <code class="inline">bot.army.health.recovered</code>.</p><p>Public ETS reads via <a href="#get_status/1"><code class="inline">get_status/1</code></a>, <a href="#list_bots/0"><code class="inline">list_bots/0</code></a>, <a href="#list_stale/0"><code class="inline">list_stale/0</code></a>
-don't require GenServer calls.</p>
+<p>In-memory service discovery registry for the Bot Army ecosystem.</p><p>Maintains a registry of all active bots and their available NATS subjects,
+enabling service discovery and capability introspection.</p><p>Bots register themselves on startup via <a href="#register/2"><code class="inline">register/2</code></a>, providing:</p><ul><li>Bot name</li><li>Version</li><li>List of subjects with metadata (type, description, timeout)</li></ul><p>The registry responds to NATS queries:</p><ul><li><code class="inline">bot_army.registry.bots.list</code> - List all registered bots</li><li><code class="inline">bot_army.registry.bot.get</code> - Get details for a specific bot</li></ul><p>Detects offline bots via periodic heartbeat checks and cleans up stale entries.</p>
     </section>
 
 </div>
@@ -142,37 +139,49 @@ don't require GenServer calls.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#get_status/1" data-no-tooltip="" translate="no">get_status(bot_id)</a>
+        <a href="#deregister/1" data-no-tooltip="" translate="no">deregister(bot_name)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Returns <code class="inline">{:ok, {last_seen_at, status}}</code> or <code class="inline">:unknown</code>.</p></div>
+        <div class="summary-synopsis"><p>Deregister a bot from the registry.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#list_bots/0" data-no-tooltip="" translate="no">list_bots()</a>
+        <a href="#get_bot/1" data-no-tooltip="" translate="no">get_bot(bot_name)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Lists all tracked bots as <code class="inline">[{bot_id, last_seen_at, status}]</code>.</p></div>
+        <div class="summary-synopsis"><p>Get details for a specific bot.
+Returns: {:ok, bot_entry} or {:error, :not_found}</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#list_stale/0" data-no-tooltip="" translate="no">list_stale()</a>
+        <a href="#list_bots/1" data-no-tooltip="" translate="no">list_bots(filter \\ nil)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Lists stale bots as <code class="inline">[{bot_id, last_seen_at, stale_for_sec}]</code>.</p></div>
+        <div class="summary-synopsis"><p>Get all registered bots.
+Returns: {:ok, [bot_entries]} or {:error, reason}</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts \\ [])</a>
+        <a href="#register/2" data-no-tooltip="" translate="no">register(bot_name, subjects)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Register a bot with its subjects.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts)</a>
 
       </div>
 
@@ -210,14 +219,14 @@ don't require GenServer calls.</p>
 <p>Returns a specification to start this module under a supervisor.</p><p>See <a href="https://hexdocs.pm/elixir/Supervisor.html"><code class="inline">Supervisor</code></a>.</p>
   </section>
 </section>
-<section class="detail" id="get_status/1">
+<section class="detail" id="deregister/1">
 
   <div class="detail-header">
-    <a href="#get_status/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#deregister/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">get_status(bot_id)</h1>
+      <h1 class="signature" translate="no">deregister(bot_name)</h1>
 
 
     </div>
@@ -225,17 +234,17 @@ don't require GenServer calls.</p>
 
   <section class="docstring">
 
-<p>Returns <code class="inline">{:ok, {last_seen_at, status}}</code> or <code class="inline">:unknown</code>.</p>
+<p>Deregister a bot from the registry.</p>
   </section>
 </section>
-<section class="detail" id="list_bots/0">
+<section class="detail" id="get_bot/1">
 
   <div class="detail-header">
-    <a href="#list_bots/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#get_bot/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">list_bots()</h1>
+      <h1 class="signature" translate="no">get_bot(bot_name)</h1>
 
 
     </div>
@@ -243,17 +252,20 @@ don't require GenServer calls.</p>
 
   <section class="docstring">
 
-<p>Lists all tracked bots as <code class="inline">[{bot_id, last_seen_at, status}]</code>.</p>
+<p>Get details for a specific bot.
+Returns: {:ok, bot_entry} or {:error, :not_found}</p>
   </section>
 </section>
-<section class="detail" id="list_stale/0">
+<section class="detail" id="list_bots/1">
+
+    <span id="list_bots/0"></span>
 
   <div class="detail-header">
-    <a href="#list_stale/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#list_bots/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">list_stale()</h1>
+      <h1 class="signature" translate="no">list_bots(filter \\ nil)</h1>
 
 
     </div>
@@ -261,19 +273,39 @@ don't require GenServer calls.</p>
 
   <section class="docstring">
 
-<p>Lists stale bots as <code class="inline">[{bot_id, last_seen_at, stale_for_sec}]</code>.</p>
+<p>Get all registered bots.
+Returns: {:ok, [bot_entries]} or {:error, reason}</p>
+  </section>
+</section>
+<section class="detail" id="register/2">
+
+  <div class="detail-header">
+    <a href="#register/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">register(bot_name, subjects)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Register a bot with its subjects.</p><p>subjects should be a list of maps:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="5910649011-1">[</span><span class="w">
+  </span><span class="p" data-group-id="5910649011-2">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.create&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Create task&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">timeout_ms</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p" data-group-id="5910649011-2">}</span><span class="p">,</span><span class="w">
+  </span><span class="p" data-group-id="5910649011-3">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;List tasks&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">timeout_ms</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p" data-group-id="5910649011-3">}</span><span class="w">
+</span><span class="p" data-group-id="5910649011-1">]</span></code></pre>
   </section>
 </section>
 <section class="detail" id="start_link/1">
-
-    <span id="start_link/0"></span>
 
   <div class="detail-header">
     <a href="#start_link/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">start_link(opts \\ [])</h1>
+      <h1 class="signature" translate="no">start_link(opts)</h1>
 
 
     </div>

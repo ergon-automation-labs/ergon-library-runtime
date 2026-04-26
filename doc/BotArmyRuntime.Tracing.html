@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.7.3">
+    <meta name="project" content="bot_army_runtime v0.7.4">
 
 
-    <title>BotArmyRuntime.Tracing — bot_army_runtime v0.7.3</title>
+    <title>BotArmyRuntime.Tracing — bot_army_runtime v0.7.4</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-0B00BEB6.js"></script>
+    <script defer src="dist/sidebar_items-7BED6585.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.7.3
+          v0.7.4
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmyRuntime.<wbr>Tracing</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.3)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.4)</small>
 
     </h1>
 
@@ -110,10 +110,10 @@ bot_army_runtime
 
     <section id="moduledoc">
 <p>OpenTelemetry distributed tracing integration for NATS message flows.</p><p>Provides helpers for:</p><ul><li>Injecting trace context into outgoing NATS messages (publisher side)</li><li>Extracting trace context from incoming NATS messages (consumer side)</li><li>Creating spans around NATS publish and consume operations</li></ul><h2 id="module-configuration" class="section-heading"><a href="#module-configuration" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Configuration</span></h2><p>Set <code class="inline">OTEL_EXPORTER_OTLP_ENDPOINT</code> env var (e.g., <code class="inline">http://localhost:4318</code>)
-to enable trace export. If unset, the noop exporter is used.</p><h2 id="module-usage-publisher" class="section-heading"><a href="#module-usage-publisher" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage (Publisher)</span></h2><pre><code class="makeup elixir" translate="no"><span class="n">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Tracing</span><span class="o">.</span><span class="n">inject_trace_context</span><span class="p" data-group-id="9814803508-1">(</span><span class="p" data-group-id="9814803508-2">[</span><span class="p" data-group-id="9814803508-2">]</span><span class="p" data-group-id="9814803508-1">)</span><span class="w">
-</span><span class="nc">Gnat</span><span class="o">.</span><span class="n">pub</span><span class="p" data-group-id="9814803508-3">(</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="n">subject</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="ss">headers</span><span class="p">:</span><span class="w"> </span><span class="n">headers</span><span class="p" data-group-id="9814803508-3">)</span></code></pre><h2 id="module-usage-consumer" class="section-heading"><a href="#module-usage-consumer" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage (Consumer)</span></h2><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.Tracing</span><span class="o">.</span><span class="n">with_consumer_span</span><span class="p" data-group-id="3790228277-1">(</span><span class="n">msg</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span><span class="w"> </span><span class="nc">Map</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="3790228277-2">(</span><span class="n">msg</span><span class="p">,</span><span class="w"> </span><span class="ss">:headers</span><span class="p" data-group-id="3790228277-2">)</span><span class="p">,</span><span class="w"> </span><span class="k" data-group-id="3790228277-3">fn</span><span class="w"> </span><span class="o">-&gt;</span><span class="w">
+to enable trace export. If unset, the noop exporter is used.</p><h2 id="module-usage-publisher" class="section-heading"><a href="#module-usage-publisher" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage (Publisher)</span></h2><pre><code class="makeup elixir" translate="no"><span class="n">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Tracing</span><span class="o">.</span><span class="n">inject_trace_context</span><span class="p" data-group-id="7725183174-1">(</span><span class="p" data-group-id="7725183174-2">[</span><span class="p" data-group-id="7725183174-2">]</span><span class="p" data-group-id="7725183174-1">)</span><span class="w">
+</span><span class="nc">Gnat</span><span class="o">.</span><span class="n">pub</span><span class="p" data-group-id="7725183174-3">(</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="n">subject</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="ss">headers</span><span class="p">:</span><span class="w"> </span><span class="n">headers</span><span class="p" data-group-id="7725183174-3">)</span></code></pre><h2 id="module-usage-consumer" class="section-heading"><a href="#module-usage-consumer" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage (Consumer)</span></h2><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.Tracing</span><span class="o">.</span><span class="n">with_consumer_span</span><span class="p" data-group-id="8253973014-1">(</span><span class="n">msg</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span><span class="w"> </span><span class="nc">Map</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="8253973014-2">(</span><span class="n">msg</span><span class="p">,</span><span class="w"> </span><span class="ss">:headers</span><span class="p" data-group-id="8253973014-2">)</span><span class="p">,</span><span class="w"> </span><span class="k" data-group-id="8253973014-3">fn</span><span class="w"> </span><span class="o">-&gt;</span><span class="w">
   </span><span class="c1"># process message</span><span class="w">
-</span><span class="k" data-group-id="3790228277-3">end</span><span class="p" data-group-id="3790228277-1">)</span></code></pre>
+</span><span class="k" data-group-id="8253973014-3">end</span><span class="p" data-group-id="8253973014-1">)</span></code></pre>
     </section>
 
 </div>

@@ -1,4 +1,4 @@
-# bot_army_runtime v0.7.3 - Table of Contents
+# bot_army_runtime v0.7.4 - Table of Contents
 
 ## Modules
 
@@ -18,9 +18,11 @@
 - [BotArmyRuntime.NATS.Dedup](BotArmyRuntime.NATS.Dedup.md): ETS-based sliding window deduplication for NATS events.
 - [BotArmyRuntime.NATS.JetStream](BotArmyRuntime.NATS.JetStream.md): JetStream stream and consumer management for Bot Army services.
 - [BotArmyRuntime.NATS.Publisher](BotArmyRuntime.NATS.Publisher.md): Publishes messages to NATS.
+- [BotArmyRuntime.NATS.Reply](BotArmyRuntime.NATS.Reply.md): Standardized response format for NATS request/reply handlers.
 - [BotArmyRuntime.Personality.Formatter](BotArmyRuntime.Personality.Formatter.md): Message formatter with bot personality symbols.
 - [BotArmyRuntime.Personality.Identity](BotArmyRuntime.Personality.Identity.md): Bot Army personality symbols registry.
 - [BotArmyRuntime.PromEx](BotArmyRuntime.PromEx.md): PromEx module for Bot Army metrics collection.
+- [BotArmyRuntime.Registry](BotArmyRuntime.Registry.md): In-memory service discovery registry for the Bot Army ecosystem.
 - [BotArmyRuntime.Telemetry](BotArmyRuntime.Telemetry.md): Sets up telemetry handlers for observability across Bot Army services.
 - [BotArmyRuntime.Tenant](BotArmyRuntime.Tenant.md): Tenant management utilities for multi-tenancy support.
 - [BotArmyRuntime.Tracing](BotArmyRuntime.Tracing.md): OpenTelemetry distributed tracing integration for NATS message flows.

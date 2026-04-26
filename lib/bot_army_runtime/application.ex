@@ -25,6 +25,9 @@ defmodule BotArmyRuntime.Application do
         # Registry for NATS connection status broadcasts
         {Registry, keys: :duplicate, name: BotArmyRuntime.NATS.ConnectionRegistry},
 
+        # Registry for circuit breaker state (one per breaker key)
+        {Registry, keys: :unique, name: BotArmyRuntime.NATS.CircuitBreakerRegistry},
+
         # PromEx metrics collection
         {BotArmyRuntime.PromEx, []},
 
@@ -37,6 +40,9 @@ defmodule BotArmyRuntime.Application do
 
         # NATS message deduplication (ETS sliding window)
         {BotArmyRuntime.NATS.Dedup, []},
+
+        # NATS circuit breaker (per-key failure tracking for resilience)
+        {BotArmyRuntime.NATS.CircuitBreaker, []},
 
         # Service discovery registry (in-memory bot registry with heartbeat detection)
         {BotArmyRuntime.Registry, []},

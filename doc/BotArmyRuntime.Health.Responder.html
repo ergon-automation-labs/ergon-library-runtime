@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.7.3">
+    <meta name="project" content="bot_army_runtime v0.7.4">
 
 
-    <title>BotArmyRuntime.Health.Responder — bot_army_runtime v0.7.3</title>
+    <title>BotArmyRuntime.Health.Responder — bot_army_runtime v0.7.4</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-0B00BEB6.js"></script>
+    <script defer src="dist/sidebar_items-7BED6585.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.7.3
+          v0.7.4
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmyRuntime.<wbr>Health.<wbr>Responder</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.3)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.4)</small>
 
     </h1>
 
@@ -110,8 +110,8 @@ bot_army_runtime
 
     <section id="moduledoc">
 <p>Shared health check responder for Bot Army services.</p><p>Subscribes to <code class="inline">bot.&lt;bot_name&gt;.health</code> on NATS (request/reply pattern).
-Reports NATS connectivity, database connectivity, key process liveness, and version.</p><p>Re-registers with ConnectionRegistry on reconnect so the health subscription
-is always active.</p>
+Reports NATS connectivity, database connectivity, key process liveness, and version.</p><p>Also provides subject registry: <code class="inline">bot.&lt;bot_name&gt;.subjects</code> returns metadata about
+what subjects this bot handles (request/reply and subscriptions).</p><p>Re-registers with ConnectionRegistry on reconnect so subscriptions are always active.</p>
     </section>
 
 </div>
@@ -135,6 +135,16 @@ is always active.</p>
       </div>
 
         <div class="summary-synopsis"><p>Returns a specification to start this module under a supervisor.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#register_subjects/1" data-no-tooltip="" translate="no">register_subjects(subjects)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Register subjects that this bot handles.</p></div>
 
     </div>
 
@@ -176,6 +186,27 @@ is always active.</p>
   <section class="docstring">
 
 <p>Returns a specification to start this module under a supervisor.</p><p>See <a href="https://hexdocs.pm/elixir/Supervisor.html"><code class="inline">Supervisor</code></a>.</p>
+  </section>
+</section>
+<section class="detail" id="register_subjects/1">
+
+  <div class="detail-header">
+    <a href="#register_subjects/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">register_subjects(subjects)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Register subjects that this bot handles.</p><p>subjects should be a list of maps:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="4503420985-1">[</span><span class="w">
+  </span><span class="p" data-group-id="4503420985-2">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;List tasks&quot;</span><span class="p" data-group-id="4503420985-2">}</span><span class="p">,</span><span class="w">
+  </span><span class="p" data-group-id="4503420985-3">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;events.gtd.task.&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:subscribe</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Task events&quot;</span><span class="p" data-group-id="4503420985-3">}</span><span class="w">
+</span><span class="p" data-group-id="4503420985-1">]</span></code></pre>
   </section>
 </section>
 <section class="detail" id="start_link/1">

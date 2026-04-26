@@ -11,9 +11,11 @@ BotArmyRuntime.NATS.Connection.md
 BotArmyRuntime.NATS.Dedup.md
 BotArmyRuntime.NATS.JetStream.md
 BotArmyRuntime.NATS.Publisher.md
+BotArmyRuntime.NATS.Reply.md
 BotArmyRuntime.Personality.Formatter.md
 BotArmyRuntime.Personality.Identity.md
 BotArmyRuntime.PromEx.md
+BotArmyRuntime.Registry.md
 BotArmyRuntime.Telemetry.md
 BotArmyRuntime.Tenant.md
 BotArmyRuntime.Tracing.md

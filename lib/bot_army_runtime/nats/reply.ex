@@ -38,6 +38,7 @@ defmodule BotArmyRuntime.NATS.Reply do
   Build a success response.
 
   Returns JSON-encoded binary ready to send via Gnat.pub/3.
+  Automatically includes correlation_id if one is set in Logger.metadata.
   """
   def ok(data) do
     response = %{
@@ -47,6 +48,12 @@ defmodule BotArmyRuntime.NATS.Reply do
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
     }
 
+    response =
+      case BotArmyRuntime.Correlation.current() do
+        nil -> response
+        correlation_id -> Map.put(response, "correlation_id", correlation_id)
+      end
+
     Jason.encode!(response)
   end
 
@@ -54,6 +61,7 @@ defmodule BotArmyRuntime.NATS.Reply do
   Build an error response.
 
   code is optional and should be an atom (e.g., :validation_error, :not_found).
+  Automatically includes correlation_id if one is set in Logger.metadata.
   """
   def error(message, code \\ nil) when is_binary(message) do
     response = %{
@@ -68,6 +76,12 @@ defmodule BotArmyRuntime.NATS.Reply do
         Map.put(response, "code", Atom.to_string(code))
       else
         response
+      end
+
+    response =
+      case BotArmyRuntime.Correlation.current() do
+        nil -> response
+        correlation_id -> Map.put(response, "correlation_id", correlation_id)
       end
 
     Jason.encode!(response)

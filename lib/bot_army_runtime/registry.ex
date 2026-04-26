@@ -226,7 +226,7 @@ defmodule BotArmyRuntime.Registry do
           handle_bot_get_query(body, state)
 
         _ ->
-          error_response("unknown_subject", "Unknown registry subject: #{topic}")
+          BotArmyRuntime.NATS.Reply.error("Unknown registry subject: #{topic}", :unknown_subject)
       end
 
     if state.connection do
@@ -243,14 +243,10 @@ defmodule BotArmyRuntime.Registry do
   defp handle_bots_list_query(state) do
     bots = state.bots |> Map.values() |> Enum.map(&format_bot_entry/1)
 
-    response = %{
-      "ok" => true,
+    BotArmyRuntime.NATS.Reply.ok(%{
       "bots" => bots,
-      "count" => length(bots),
-      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
-    }
-
-    Jason.encode!(response)
+      "count" => length(bots)
+    })
   end
 
   defp handle_bot_get_query(body, state) do
@@ -260,29 +256,31 @@ defmodule BotArmyRuntime.Registry do
           bot_name = params["bot_name"] || params["name"]
 
           if is_nil(bot_name) do
-            error_response("missing_parameter", "bot_name or name parameter required")
+            BotArmyRuntime.NATS.Reply.error(
+              "bot_name or name parameter required",
+              :missing_parameter
+            )
           else
             case Map.get(state.bots, bot_name) do
               nil ->
-                error_response("not_found", "Bot not found: #{bot_name}")
+                BotArmyRuntime.NATS.Reply.error("Bot not found: #{bot_name}", :not_found)
 
               entry ->
-                response = %{
-                  "ok" => true,
-                  "bot" => format_bot_entry(entry),
-                  "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
-                }
-
-                Jason.encode!(response)
+                BotArmyRuntime.NATS.Reply.ok(%{
+                  "bot" => format_bot_entry(entry)
+                })
             end
           end
 
         {:error, _reason} ->
-          error_response("invalid_request", "Invalid JSON in request body")
+          BotArmyRuntime.NATS.Reply.error("Invalid JSON in request body", :invalid_request)
       end
     rescue
       e ->
-        error_response("error", "Error processing request: #{inspect(e)}")
+        BotArmyRuntime.NATS.Reply.error(
+          "Error processing request: #{inspect(e)}",
+          :processing_error
+        )
     end
   end
 
@@ -310,15 +308,4 @@ defmodule BotArmyRuntime.Registry do
   defp filter_bots(bots, nil), do: bots
   # TODO: Implement health-based filtering
   defp filter_bots(bots, _filter), do: bots
-
-  defp error_response(error, description) do
-    response = %{
-      "ok" => false,
-      "error" => error,
-      "error_description" => description,
-      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
-    }
-
-    Jason.encode!(response)
-  end
 end

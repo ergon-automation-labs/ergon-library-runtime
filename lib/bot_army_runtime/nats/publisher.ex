@@ -61,23 +61,43 @@ defmodule BotArmyRuntime.NATS.Publisher do
   Publishes a message and waits for a reply (request-reply pattern).
 
   Useful for synchronous operations that expect a response from a service.
+  Supports optional retry with exponential backoff and circuit breaker protection.
 
   ## Arguments
 
     - `subject` - NATS subject to publish to
     - `payload` - Message payload
-    - `timeout_ms` - Time to wait for a reply (default: 5000)
+    - `opts` - Optional keyword list with:
+      - `:timeout_ms` - Timeout for reply (default: 5000)
+      - `:max_retries` - Max retries on timeout/transient errors (default: 0)
+      - `:retry_base_ms` - Base delay for exponential backoff (default: 100)
+      - `:circuit_breaker_key` - Key for circuit breaker (optional, no CB if not set)
 
   ## Returns
 
     - `{:ok, reply_payload}` - Reply received (decoded as map)
     - `{:error, :timeout}` - No reply received within timeout
+    - `{:error, {:circuit_open, retry_after_ms}}` - Circuit breaker is open
     - `{:error, reason}` - Publishing or connection failed
   """
-  def request(subject, payload, timeout_ms \\ 5000) when is_binary(subject) and is_map(payload) do
+  def request(subject, payload, opts \\ []) when is_binary(subject) and is_map(payload) do
+    timeout_ms = Keyword.get(opts, :timeout_ms, 5000)
+    max_retries = Keyword.get(opts, :max_retries, 0)
+    retry_base_ms = Keyword.get(opts, :retry_base_ms, 100)
+    cb_key = Keyword.get(opts, :circuit_breaker_key)
+
     case get_connection() do
       {:ok, conn} ->
-        do_request(conn, subject, payload, timeout_ms)
+        do_request_with_retry(
+          conn,
+          subject,
+          payload,
+          timeout_ms,
+          max_retries,
+          retry_base_ms,
+          cb_key,
+          0
+        )
 
       {:error, reason} ->
         log_request_failure(subject, reason)
@@ -88,7 +108,12 @@ defmodule BotArmyRuntime.NATS.Publisher do
   defp do_publish(conn, subject, payload, _opts, _timeout) do
     try do
       json_payload = Jason.encode!(payload)
-      headers = BotArmyRuntime.Tracing.inject_trace_context([])
+
+      headers =
+        []
+        |> BotArmyRuntime.Tracing.inject_trace_context()
+        |> BotArmyRuntime.Correlation.inject_into_headers()
+
       Gnat.pub(conn, subject, json_payload, headers: headers)
 
       log_publish_success(subject, payload)
@@ -104,10 +129,106 @@ defmodule BotArmyRuntime.NATS.Publisher do
     end
   end
 
+  defp do_request_with_retry(
+         conn,
+         subject,
+         payload,
+         timeout_ms,
+         max_retries,
+         retry_base_ms,
+         cb_key,
+         attempt
+       ) do
+    # Check circuit breaker before attempting
+    if cb_key && attempt == 0 do
+      case BotArmyRuntime.NATS.CircuitBreaker.allow?(cb_key) do
+        :ok ->
+          do_try_request(
+            conn,
+            subject,
+            payload,
+            timeout_ms,
+            max_retries,
+            retry_base_ms,
+            cb_key,
+            attempt
+          )
+
+        {:open, retry_after} ->
+          log_circuit_open(subject, retry_after)
+          {:error, {:circuit_open, retry_after}}
+      end
+    else
+      do_try_request(
+        conn,
+        subject,
+        payload,
+        timeout_ms,
+        max_retries,
+        retry_base_ms,
+        cb_key,
+        attempt
+      )
+    end
+  end
+
+  defp do_try_request(
+         conn,
+         subject,
+         payload,
+         timeout_ms,
+         max_retries,
+         retry_base_ms,
+         cb_key,
+         attempt
+       ) do
+    case do_request(conn, subject, payload, timeout_ms) do
+      {:ok, reply} ->
+        if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_success(cb_key)
+        {:ok, reply}
+
+      {:error, :timeout} = err ->
+        if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_failure(cb_key, :timeout)
+
+        if attempt < max_retries do
+          backoff = backoff_delay(retry_base_ms, attempt)
+
+          Logger.debug(
+            "[NATS] Request timeout, retrying in #{backoff}ms (attempt #{attempt + 1}/#{max_retries})",
+            subject: subject
+          )
+
+          Process.sleep(backoff)
+
+          do_request_with_retry(
+            conn,
+            subject,
+            payload,
+            timeout_ms,
+            max_retries,
+            retry_base_ms,
+            cb_key,
+            attempt + 1
+          )
+        else
+          if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_failure(cb_key, :timeout)
+          err
+        end
+
+      {:error, reason} = err ->
+        if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_failure(cb_key, reason)
+        err
+    end
+  end
+
   defp do_request(conn, subject, payload, timeout_ms) do
     try do
       json_payload = Jason.encode!(payload)
-      headers = BotArmyRuntime.Tracing.inject_trace_context([])
+
+      headers =
+        []
+        |> BotArmyRuntime.Tracing.inject_trace_context()
+        |> BotArmyRuntime.Correlation.inject_into_headers()
 
       case Gnat.request(conn, subject, json_payload,
              receive_timeout: timeout_ms,
@@ -143,6 +264,12 @@ defmodule BotArmyRuntime.NATS.Publisher do
     end
   end
 
+  defp backoff_delay(base_ms, attempt) do
+    # Exponential backoff: base * 2^attempt + jitter
+    jitter = :rand.uniform(base_ms)
+    trunc(base_ms * :math.pow(2, min(attempt, 5))) + jitter
+  end
+
   defp get_connection do
     timeout_ms = Application.get_env(:bot_army_runtime, :nats_connection_timeout, 1000)
 
@@ -155,7 +282,10 @@ defmodule BotArmyRuntime.NATS.Publisher do
   # Logging helpers
 
   defp log_publish_success(subject, _payload) do
-    Logger.debug("[NATS] Published message", subject: subject)
+    Logger.debug("[NATS] Published message",
+      subject: subject,
+      correlation_id: BotArmyRuntime.Correlation.current()
+    )
   end
 
   defp log_publish_failure(subject, reason) do
@@ -216,6 +346,13 @@ defmodule BotArmyRuntime.NATS.Publisher do
     Logger.error("[NATS] Failed to decode reply",
       subject: subject,
       error: error.message
+    )
+  end
+
+  defp log_circuit_open(subject, retry_after) do
+    Logger.error("[NATS] Circuit breaker open",
+      subject: subject,
+      retry_after_ms: retry_after
     )
   end
 

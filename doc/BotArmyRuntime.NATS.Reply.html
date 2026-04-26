@@ -8,7 +8,7 @@
     <meta name="project" content="bot_army_runtime v0.7.4">
 
 
-    <title>BotArmy.Pulse — bot_army_runtime v0.7.4</title>
+    <title>BotArmyRuntime.NATS.Reply — bot_army_runtime v0.7.4</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -93,12 +93,12 @@ bot_army_runtime
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">BotArmy.<wbr>Pulse</span> 
+      <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Reply</span> 
       <small class="app-vsn" translate="no">(bot_army_runtime v0.7.4)</small>
 
     </h1>
 
-<a href="BotArmy.Pulse.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="BotArmyRuntime.NATS.Reply.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
@@ -109,28 +109,20 @@ bot_army_runtime
 
 
     <section id="moduledoc">
-<p>Pulse publishing module.</p><p>The pulse is a bot's current state and activity. It's published periodically
-to <code class="inline">bot.army.pulse.&lt;bot_id&gt;</code> and provides real-time visibility into what
-each bot is doing.</p><h2 id="module-pulse-schema" class="section-heading"><a href="#module-pulse-schema" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Pulse Schema</span></h2><pre><code class="json">{
-  &quot;bot_id&quot;: &quot;gtd_bot&quot;,
-  &quot;timestamp&quot;: &quot;2026-04-21T10:30:00Z&quot;,
-  &quot;status&quot;: &quot;active|idle|busy|error&quot;,
-  &quot;current_task&quot;: &quot;processing_inbox&quot;,
-  &quot;task_count&quot;: 14,
-  &quot;queue_depth&quot;: 5,
-  &quot;last_action&quot;: &quot;task_created&quot;,
-  &quot;uptime_seconds&quot;: 86400,
-  &quot;metrics&quot;: {
-    &quot;llm_calls_today&quot;: 23,
-    &quot;tasks_processed&quot;: 142,
-    &quot;errors_today&quot;: 0
-  }
-}</code></pre><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><pre><code class="makeup elixir" translate="no"><span class="c1"># Publish a pulse for the current bot</span><span class="w">
-</span><span class="nc">BotArmy.Pulse</span><span class="o">.</span><span class="n">publish</span><span class="p" data-group-id="1482900405-1">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="1482900405-2">%{</span><span class="w">
-  </span><span class="ss">status</span><span class="p">:</span><span class="w"> </span><span class="ss">:active</span><span class="p">,</span><span class="w">
-  </span><span class="ss">current_task</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;processing_inbox&quot;</span><span class="p">,</span><span class="w">
-  </span><span class="ss">task_count</span><span class="p">:</span><span class="w"> </span><span class="mi">14</span><span class="w">
-</span><span class="p" data-group-id="1482900405-2">}</span><span class="p" data-group-id="1482900405-1">)</span></code></pre><h2 id="module-subscribers" class="section-heading"><a href="#module-subscribers" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Subscribers</span></h2><p>The Context Broker subscribes to all <code class="inline">bot.army.pulse.*</code> subjects to:</p><ul><li>Build a real-time &quot;army state&quot; dashboard</li><li>Detect stale bots (no pulse in 60s = potential issue)</li><li>Coordinate cross-bot activities</li></ul><p>Alerting on stale pulses is handled by <code class="inline">army.health.check</code> subscriber.</p>
+<p>Standardized response format for NATS request/reply handlers.</p><p>All request/reply handlers should return responses using these helpers
+to ensure consistent format across the fleet:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="0893101920-1">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="nc">Gnat</span><span class="o">.</span><span class="n">pub</span><span class="p" data-group-id="0893101920-2">(</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="n">reply_to</span><span class="p">,</span><span class="w"> </span><span class="nc">Reply</span><span class="o">.</span><span class="n">ok</span><span class="p" data-group-id="0893101920-3">(</span><span class="n">data</span><span class="p" data-group-id="0893101920-3">)</span><span class="p" data-group-id="0893101920-2">)</span><span class="p" data-group-id="0893101920-1">}</span><span class="w">
+</span><span class="p" data-group-id="0893101920-4">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="nc">Gnat</span><span class="o">.</span><span class="n">pub</span><span class="p" data-group-id="0893101920-5">(</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="n">reply_to</span><span class="p">,</span><span class="w"> </span><span class="nc">Reply</span><span class="o">.</span><span class="n">error</span><span class="p" data-group-id="0893101920-6">(</span><span class="s">&quot;invalid input&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:validation_error</span><span class="p" data-group-id="0893101920-6">)</span><span class="p" data-group-id="0893101920-5">)</span><span class="p" data-group-id="0893101920-4">}</span></code></pre><p>Response format:</p><pre><code class="json">{
+  &quot;ok&quot;: true,
+  &quot;data&quot;: {...},
+  &quot;schema_version&quot;: &quot;1.0&quot;,
+  &quot;timestamp&quot;: &quot;2026-04-25T...&quot;
+}</code></pre><p>or on error:</p><pre><code class="json">{
+  &quot;ok&quot;: false,
+  &quot;error&quot;: &quot;human readable message&quot;,
+  &quot;code&quot;: &quot;error_code_atom&quot;,
+  &quot;schema_version&quot;: &quot;1.0&quot;,
+  &quot;timestamp&quot;: &quot;2026-04-25T...&quot;
+}</code></pre>
     </section>
 
 </div>
@@ -149,21 +141,21 @@ each bot is doing.</p><h2 id="module-pulse-schema" class="section-heading"><a hr
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#build_state/2" data-no-tooltip="" translate="no">build_state(bot_id, opts \\ [])</a>
+        <a href="#error/2" data-no-tooltip="" translate="no">error(message, code \\ nil)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Build a pulse state from bot metadata.</p></div>
+        <div class="summary-synopsis"><p>Build an error response.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#publish/3" data-no-tooltip="" translate="no">publish(bot_id, state, opts \\ [])</a>
+        <a href="#ok/1" data-no-tooltip="" translate="no">ok(data)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Publish a pulse for a bot.</p></div>
+        <div class="summary-synopsis"><p>Build a success response.</p></div>
 
     </div>
 
@@ -181,16 +173,16 @@ each bot is doing.</p><h2 id="module-pulse-schema" class="section-heading"><a hr
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="build_state/2">
+<section class="detail" id="error/2">
 
-    <span id="build_state/1"></span>
+    <span id="error/1"></span>
 
   <div class="detail-header">
-    <a href="#build_state/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#error/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">build_state(bot_id, opts \\ [])</h1>
+      <h1 class="signature" translate="no">error(message, code \\ nil)</h1>
 
 
     </div>
@@ -198,33 +190,17 @@ each bot is doing.</p><h2 id="module-pulse-schema" class="section-heading"><a hr
 
   <section class="docstring">
 
-      <div class="specs">
-
-          <pre translate="no"><span class="attribute">@spec</span> build_state(
-  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>() | <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
-  opts :: [
-    task_count: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">integer</a>(),
-    queue_depth: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">integer</a>(),
-    metrics: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
-    heartbeat_count: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">integer</a>()
-  ]
-) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()</pre>
-
-      </div>
-
-<p>Build a pulse state from bot metadata.</p><p>Convenience function for bots to publish their current state.</p>
+<p>Build an error response.</p><p>code is optional and should be an atom (e.g., :validation_error, :not_found).</p>
   </section>
 </section>
-<section class="detail" id="publish/3">
-
-    <span id="publish/2"></span>
+<section class="detail" id="ok/1">
 
   <div class="detail-header">
-    <a href="#publish/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#ok/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">publish(bot_id, state, opts \\ [])</h1>
+      <h1 class="signature" translate="no">ok(data)</h1>
 
 
     </div>
@@ -232,13 +208,7 @@ each bot is doing.</p><h2 id="module-pulse-schema" class="section-heading"><a hr
 
   <section class="docstring">
 
-      <div class="specs">
-
-          <pre translate="no"><span class="attribute">@spec</span> publish(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>() | <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), opts :: [{:tenant_id, <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()}]) :: :ok</pre>
-
-      </div>
-
-<p>Publish a pulse for a bot.</p><p>Publishes to <code class="inline">bot.army.pulse.&lt;bot_id&gt;</code> with the provided state.</p>
+<p>Build a success response.</p><p>Returns JSON-encoded binary ready to send via Gnat.pub/3.</p>
   </section>
 </section>
 

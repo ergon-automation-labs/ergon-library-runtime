@@ -69,6 +69,12 @@ defmodule BotArmyRuntime.Tracing do
     headers = headers || []
     extract_trace_context(headers)
 
+    BotArmyRuntime.Correlation.extract_from_headers(headers)
+    |> case do
+      nil -> BotArmyRuntime.Correlation.put(BotArmyRuntime.Correlation.generate())
+      id -> BotArmyRuntime.Correlation.put(id)
+    end
+
     span =
       Tracer.start_span("nats.consume #{subject}", %{
         kind: :consumer,
