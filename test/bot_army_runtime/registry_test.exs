@@ -151,4 +151,38 @@ defmodule BotArmyRuntime.RegistryTest do
       assert second["timeout_ms"] == 3000
     end
   end
+
+  describe "subject discovery APIs" do
+    test "lists subjects with provider counts across bots" do
+      BotArmyRuntime.Registry.register("gtd_bot", [
+        %{subject: "gtd.task.create", type: :request_reply, description: "Create task"},
+        %{subject: "gtd.task.list", type: :request_reply, description: "List tasks"}
+      ])
+
+      BotArmyRuntime.Registry.register("automation_bot", [
+        %{subject: "gtd.task.create", type: :request_reply, description: "Create task"}
+      ])
+
+      {:ok, subjects} = BotArmyRuntime.Registry.list_subjects()
+      by_subject = Map.new(subjects, &{&1["subject"], &1})
+
+      assert by_subject["gtd.task.create"]["provider_count"] == 2
+      assert by_subject["gtd.task.list"]["provider_count"] == 1
+    end
+
+    test "returns providers for a specific subject" do
+      BotArmyRuntime.Registry.register("gtd_bot", [
+        %{subject: "gtd.task.create", type: :request_reply, description: "Create task"}
+      ])
+
+      {:ok, discovery} = BotArmyRuntime.Registry.get_subject_providers("gtd.task.create")
+      assert discovery["subject"] == "gtd.task.create"
+      assert discovery["provider_count"] == 1
+      assert List.first(discovery["providers"])["bot_name"] == "gtd_bot"
+    end
+
+    test "returns not_found for unknown subject providers lookup" do
+      {:error, :not_found} = BotArmyRuntime.Registry.get_subject_providers("missing.subject")
+    end
+  end
 end

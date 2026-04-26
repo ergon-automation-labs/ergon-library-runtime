@@ -13,6 +13,8 @@ defmodule BotArmyRuntime.Registry do
   The registry responds to NATS queries:
   - `bot_army.registry.bots.list` - List all registered bots
   - `bot_army.registry.bot.get` - Get details for a specific bot
+  - `bot_army.registry.subjects.list` - List all known subjects and provider counts
+  - `bot_army.registry.subject.providers.get` - Get providers for a specific subject
 
   Detects offline bots via periodic heartbeat checks and cleans up stale entries.
   """
@@ -70,6 +72,22 @@ defmodule BotArmyRuntime.Registry do
     GenServer.call(__MODULE__, {:get_bot, bot_name})
   end
 
+  @doc """
+  List all known subjects across registered bots.
+  Returns: {:ok, [subject_entries]}
+  """
+  def list_subjects(filter \\ nil) do
+    GenServer.call(__MODULE__, {:list_subjects, filter})
+  end
+
+  @doc """
+  Get all providers for a subject.
+  Returns: {:ok, subject_entry} or {:error, :not_found}
+  """
+  def get_subject_providers(subject) when is_binary(subject) do
+    GenServer.call(__MODULE__, {:get_subject_providers, subject})
+  end
+
   # ============================================================================
   # GenServer Callbacks
   # ============================================================================
@@ -100,7 +118,9 @@ defmodule BotArmyRuntime.Registry do
         subs =
           [
             "bot_army.registry.bots.list",
-            "bot_army.registry.bot.get"
+            "bot_army.registry.bot.get",
+            "bot_army.registry.subjects.list",
+            "bot_army.registry.subject.providers.get"
           ]
           |> Enum.map(fn subject ->
             case Gnat.sub(conn, self(), subject) do
@@ -211,6 +231,32 @@ defmodule BotArmyRuntime.Registry do
     end
   end
 
+  @impl true
+  def handle_call({:list_subjects, _filter}, _from, state) do
+    subjects =
+      state.bots
+      |> subject_index()
+      |> Enum.map(fn {subject, providers} ->
+        format_subject_discovery(subject, providers)
+      end)
+      |> Enum.sort_by(& &1["subject"])
+
+    {:reply, {:ok, subjects}, state}
+  end
+
+  @impl true
+  def handle_call({:get_subject_providers, subject}, _from, state) do
+    providers = state.bots |> subject_index() |> Map.get(subject, [])
+
+    case providers do
+      [] ->
+        {:reply, {:error, :not_found}, state}
+
+      _ ->
+        {:reply, {:ok, format_subject_discovery(subject, providers)}, state}
+    end
+  end
+
   # ============================================================================
   # Private Helpers
   # ============================================================================
@@ -224,6 +270,12 @@ defmodule BotArmyRuntime.Registry do
 
         "bot_army.registry.bot.get" ->
           handle_bot_get_query(body, state)
+
+        "bot_army.registry.subjects.list" ->
+          handle_subjects_list_query(state)
+
+        "bot_army.registry.subject.providers.get" ->
+          handle_subject_providers_query(body, state)
 
         _ ->
           BotArmyRuntime.NATS.Reply.error("Unknown registry subject: #{topic}", :unknown_subject)
@@ -284,6 +336,51 @@ defmodule BotArmyRuntime.Registry do
     end
   end
 
+  defp handle_subjects_list_query(state) do
+    subjects =
+      state.bots
+      |> subject_index()
+      |> Enum.map(fn {subject, providers} ->
+        format_subject_discovery(subject, providers)
+      end)
+      |> Enum.sort_by(& &1["subject"])
+
+    BotArmyRuntime.NATS.Reply.ok(%{
+      "subjects" => subjects,
+      "count" => length(subjects)
+    })
+  end
+
+  defp handle_subject_providers_query(body, _state) do
+    try do
+      case Jason.decode(body) do
+        {:ok, params} ->
+          subject = params["subject"]
+
+          if is_nil(subject) do
+            BotArmyRuntime.NATS.Reply.error("subject parameter required", :missing_parameter)
+          else
+            case get_subject_providers(subject) do
+              {:ok, discovery} ->
+                BotArmyRuntime.NATS.Reply.ok(%{"subject" => discovery})
+
+              {:error, :not_found} ->
+                BotArmyRuntime.NATS.Reply.error("Subject not found: #{subject}", :not_found)
+            end
+          end
+
+        {:error, _reason} ->
+          BotArmyRuntime.NATS.Reply.error("Invalid JSON in request body", :invalid_request)
+      end
+    rescue
+      e ->
+        BotArmyRuntime.NATS.Reply.error(
+          "Error processing request: #{inspect(e)}",
+          :processing_error
+        )
+    end
+  end
+
   defp format_bot_entry(entry) do
     %{
       "name" => entry.name,
@@ -308,4 +405,29 @@ defmodule BotArmyRuntime.Registry do
   defp filter_bots(bots, nil), do: bots
   # TODO: Implement health-based filtering
   defp filter_bots(bots, _filter), do: bots
+
+  defp subject_index(bots_map) do
+    bots_map
+    |> Map.values()
+    |> Enum.reduce(%{}, fn bot_entry, acc ->
+      Enum.reduce(bot_entry.subjects, acc, fn subject, subject_acc ->
+        provider = %{
+          "bot_name" => bot_entry.name,
+          "type" => Atom.to_string(subject.type),
+          "description" => Map.get(subject, :description, ""),
+          "timeout_ms" => Map.get(subject, :timeout_ms, 5000)
+        }
+
+        Map.update(subject_acc, subject.subject, [provider], &[provider | &1])
+      end)
+    end)
+  end
+
+  defp format_subject_discovery(subject, providers) do
+    %{
+      "subject" => subject,
+      "provider_count" => length(providers),
+      "providers" => Enum.sort_by(providers, & &1["bot_name"])
+    }
+  end
 end
