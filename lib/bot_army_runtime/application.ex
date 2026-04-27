@@ -48,7 +48,10 @@ defmodule BotArmyRuntime.Application do
         {BotArmyRuntime.Registry, []},
 
         # Health monitor (stale bot detection)
-        {BotArmyRuntime.Health.Monitor, []}
+        {BotArmyRuntime.Health.Monitor, []},
+
+        # Conversation manager (cross-bot request/response + mailbox)
+        {BotArmyRuntime.NATS.Conversation.Manager, []}
       ]
       |> maybe_add_metrics_endpoint()
 

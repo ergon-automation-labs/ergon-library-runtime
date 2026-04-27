@@ -27,6 +27,38 @@ defmodule BotArmyRuntime.Registry do
   @stale_threshold_ms 40_000
   @registry_queue_group "bot_army.registry.query.responders"
 
+  # ───────────────────────────────────────────────────────────────────────────
+  # Capability API
+  # ───────────────────────────────────────────────────────────────────────────
+
+  @doc """
+  Find bots that provide a given capability.
+
+  Returns `{:ok, [bot_names]}` or `{:ok, []}` if none found.
+  """
+  def find_by_capability(capability_name) when is_binary(capability_name) do
+    GenServer.call(__MODULE__, {:find_by_capability, capability_name}, 5000)
+  end
+
+  @doc """
+  List all registered capabilities and which bots provide them.
+
+  Returns `{:ok, %{capability => [bot_names]}}`
+  """
+  def list_capabilities do
+    GenServer.call(__MODULE__, :list_capabilities, 5000)
+  end
+
+  @doc """
+  Find the best bot to handle a given intent.
+
+  Uses capability matching, falling back to subject name matching.
+  Returns `{:ok, bot_name}` or `{:error, :no_provider}`.
+  """
+  def find_target_for_intent(intent) when is_binary(intent) do
+    GenServer.call(__MODULE__, {:find_target_for_intent, intent}, 5000)
+  end
+
   # ============================================================================
   # Public API
   # ============================================================================
@@ -47,7 +79,12 @@ defmodule BotArmyRuntime.Registry do
   ```
   """
   def register(bot_name, subjects) when is_binary(bot_name) and is_list(subjects) do
-    GenServer.cast(__MODULE__, {:register, bot_name, subjects})
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, nil})
+  end
+
+  def register(bot_name, subjects, version)
+      when is_binary(bot_name) and is_list(subjects) do
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version})
   end
 
   @doc """
@@ -103,6 +140,7 @@ defmodule BotArmyRuntime.Registry do
 
     state = %{
       bots: %{},
+      capabilities: %{},
       nats_subscriptions: [],
       connection: nil
     }
@@ -121,7 +159,10 @@ defmodule BotArmyRuntime.Registry do
             "bot_army.registry.bots.list",
             "bot_army.registry.bot.get",
             "bot_army.registry.subjects.list",
-            "bot_army.registry.subject.providers.get"
+            "bot_army.registry.subject.providers.get",
+            "bot_army.registry.capabilities.list",
+            "conv.registry.capabilities.find",
+            "conv.registry.conversation.target"
           ]
           |> Enum.map(fn subject ->
             case Gnat.sub(conn, self(), subject, queue_group: @registry_queue_group) do
@@ -192,7 +233,7 @@ defmodule BotArmyRuntime.Registry do
   end
 
   @impl true
-  def handle_cast({:register, bot_name, subjects}, state) do
+  def handle_cast({:register, bot_name, subjects, version}, state) do
     now_monotonic = System.monotonic_time(:millisecond)
     now_unix_ms = System.system_time(:millisecond)
     existing_entry = Map.get(state.bots, bot_name)
@@ -200,21 +241,32 @@ defmodule BotArmyRuntime.Registry do
 
     entry = %{
       name: bot_name,
+      version: version || "unknown",
       subjects: subjects,
       last_heartbeat_monotonic_ms: now_monotonic,
       last_heartbeat_at: now_unix_ms,
       registered_at: registered_at
     }
 
-    Logger.info("[Registry] Bot registered: #{bot_name} with #{length(subjects)} subjects")
+    # Rebuild capability index
+    capabilities = build_capability_index(%{state | bots: Map.put(state.bots, bot_name, entry)})
 
-    {:noreply, %{state | bots: Map.put(state.bots, bot_name, entry)}}
+    Logger.info(
+      "[Registry] Bot registered: #{bot_name} v#{entry.version} with #{length(subjects)} subjects"
+    )
+
+    {:noreply, %{state | bots: Map.put(state.bots, bot_name, entry), capabilities: capabilities}}
   end
 
   @impl true
   def handle_cast({:deregister, bot_name}, state) do
+    updated_bots = Map.delete(state.bots, bot_name)
+
+    # Rebuild capability index
+    capabilities = build_capability_index(%{state | bots: updated_bots})
+
     Logger.info("[Registry] Bot deregistered: #{bot_name}")
-    {:noreply, %{state | bots: Map.delete(state.bots, bot_name)}}
+    {:noreply, %{state | bots: updated_bots, capabilities: capabilities}}
   end
 
   @impl true
@@ -265,6 +317,49 @@ defmodule BotArmyRuntime.Registry do
     end
   end
 
+  @impl true
+  def handle_call({:find_by_capability, capability_name}, _from, state) do
+    bots =
+      state.capabilities
+      |> Map.get(capability_name, [])
+      |> Enum.sort()
+
+    {:reply, {:ok, bots}, state}
+  end
+
+  @impl true
+  def handle_call(:list_capabilities, _from, state) do
+    {:reply, {:ok, state.capabilities}, state}
+  end
+
+  @impl true
+  def handle_call({:find_target_for_intent, intent}, _from, state) do
+    # First try direct capability match
+    capability_key = intent_to_capability(intent)
+
+    result =
+      case Map.get(state.capabilities, capability_key) do
+        [bot_name | _] ->
+          {:ok, bot_name}
+
+        _ ->
+          # Fall back to subject name matching
+          state.bots
+          |> Map.values()
+          |> Enum.find_value(fn entry ->
+            matching_subject =
+              Enum.find(entry.subjects, fn s ->
+                String.contains?(s.subject, intent) or
+                  String.contains?(s.subject, intent_to_subject_pattern(intent))
+              end)
+
+            if matching_subject, do: {:ok, entry.name}, else: nil
+          end)
+      end
+
+    {:reply, result || {:error, :no_provider}, state}
+  end
+
   # ============================================================================
   # Private Helpers
   # ============================================================================
@@ -284,6 +379,15 @@ defmodule BotArmyRuntime.Registry do
 
         "bot_army.registry.subject.providers.get" ->
           handle_subject_providers_query(body, state)
+
+        "bot_army.registry.capabilities.list" ->
+          handle_capabilities_list_query(state)
+
+        "conv.registry.capabilities.find" ->
+          handle_capabilities_find_query(body, state)
+
+        "conv.registry.conversation.target" ->
+          handle_conversation_target_query(body, state)
 
         _ ->
           BotArmyRuntime.NATS.Reply.error("Unknown registry subject: #{topic}", :unknown_subject)
@@ -402,6 +506,7 @@ defmodule BotArmyRuntime.Registry do
   defp format_bot_entry(entry) do
     %{
       "name" => entry.name,
+      "version" => Map.get(entry, :version, "unknown"),
       "registered_at" =>
         entry.registered_at |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601(),
       "last_heartbeat" =>
@@ -412,12 +517,203 @@ defmodule BotArmyRuntime.Registry do
   end
 
   defp format_subject(subject) do
-    %{
+    base = %{
       "subject" => subject.subject,
       "type" => Atom.to_string(subject.type),
       "description" => Map.get(subject, :description, ""),
       "timeout_ms" => Map.get(subject, :timeout_ms, 5000)
     }
+
+    base =
+      if Map.get(subject, :capabilities) do
+        Map.put(base, "capabilities", subject.capabilities)
+      else
+        base
+      end
+
+    if Map.get(subject, :conversation_support) do
+      Map.put(base, "conversation_support", subject.conversation_support)
+    else
+      base
+    end
+  end
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Capability Index
+  # ───────────────────────────────────────────────────────────────────────────
+
+  defp build_capability_index(state) do
+    state.bots
+    |> Map.values()
+    |> Enum.reduce(%{}, fn bot_entry, acc ->
+      bot_caps =
+        bot_entry.subjects
+        |> Enum.flat_map(fn subject ->
+          Map.get(subject, :capabilities, [])
+        end)
+
+      Enum.reduce(bot_caps, acc, fn cap, inner_acc ->
+        Map.update(inner_acc, cap, [bot_entry.name], &(&1 ++ [bot_entry.name]))
+      end)
+    end)
+  end
+
+  defp handle_capabilities_find_query(body, state) do
+    try do
+      case Jason.decode(body) do
+        {:ok, params} ->
+          capability = params["capability"]
+
+          if is_nil(capability) do
+            BotArmyRuntime.NATS.Reply.error(
+              "capability parameter required",
+              :missing_parameter
+            )
+          else
+            bots = Map.get(state.capabilities, capability, [])
+
+            BotArmyRuntime.NATS.Reply.ok(%{
+              "capability" => capability,
+              "providers" => Enum.sort(bots),
+              "count" => length(bots)
+            })
+          end
+
+        {:error, _reason} ->
+          BotArmyRuntime.NATS.Reply.error("Invalid JSON in request body", :invalid_request)
+      end
+    rescue
+      e ->
+        BotArmyRuntime.NATS.Reply.error(
+          "Error processing request: #{inspect(e)}",
+          :processing_error
+        )
+    end
+  end
+
+  defp handle_conversation_target_query(body, state) do
+    try do
+      case Jason.decode(body) do
+        {:ok, params} ->
+          intent = params["intent"]
+
+          if is_nil(intent) do
+            BotArmyRuntime.NATS.Reply.error("intent parameter required", :missing_parameter)
+          else
+            capability_key = intent_to_capability(intent)
+
+            target =
+              case Map.get(state.capabilities, capability_key) do
+                [bot_name | _] ->
+                  %{"bot_name" => bot_name, "matched_by" => "capability"}
+
+                _ ->
+                  # Fall back to subject matching
+                  state.bots
+                  |> Map.values()
+                  |> Enum.find_value(fn entry ->
+                    matching =
+                      Enum.find(entry.subjects, fn s ->
+                        String.contains?(s.subject, intent) or
+                          String.contains?(s.subject, intent_to_subject_pattern(intent))
+                      end)
+
+                    if matching,
+                      do: %{
+                        "bot_name" => entry.name,
+                        "matched_by" => "subject",
+                        "subject" => matching.subject
+                      },
+                      else: nil
+                  end)
+              end
+
+            if target do
+              BotArmyRuntime.NATS.Reply.ok(target)
+            else
+              BotArmyRuntime.NATS.Reply.error(
+                "No provider found for intent: #{intent}",
+                :no_provider
+              )
+            end
+          end
+
+        {:error, _reason} ->
+          BotArmyRuntime.NATS.Reply.error("Invalid JSON in request body", :invalid_request)
+      end
+    rescue
+      e ->
+        BotArmyRuntime.NATS.Reply.error(
+          "Error processing request: #{inspect(e)}",
+          :processing_error
+        )
+    end
+  end
+
+  defp handle_capabilities_list_query(state) do
+    caps =
+      state.capabilities
+      |> Enum.map(fn {capability, bot_names} ->
+        %{
+          "capability" => capability,
+          "provider_count" => length(bot_names),
+          "providers" => Enum.sort(bot_names)
+        }
+      end)
+      |> Enum.sort_by(& &1["capability"])
+
+    BotArmyRuntime.NATS.Reply.ok(%{
+      "capabilities" => caps,
+      "count" => length(caps),
+      "responder" => responder_identity()
+    })
+  end
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Intent mapping
+  # ───────────────────────────────────────────────────────────────────────────
+
+  @intent_mappings %{
+    "get_task_count" => "task.query",
+    "count_tasks" => "task.query",
+    "list_tasks" => "task.query",
+    "find_task" => "task.query",
+    "search_tasks" => "task.query",
+    "create_task" => "task.create",
+    "add_task" => "task.create",
+    "update_task" => "task.update",
+    "complete_task" => "task.complete",
+    "delete_task" => "task.delete",
+    "defer_task" => "task.defer",
+    "add_inbox_item" => "inbox.add",
+    "create_project" => "project.create",
+    "update_project" => "project.update",
+    "list_projects" => "project.list",
+    "summarize_text" => "llm.summarize",
+    "summarize" => "llm.summarize",
+    "classify_text" => "llm.classify",
+    "classify" => "llm.classify",
+    "ask_llm" => "llm.ask",
+    "ask" => "llm.ask",
+    "complete_prompt" => "llm.complete",
+    "generate_embedding" => "llm.embed",
+    "index_document" => "llm.rag.index",
+    "search_documents" => "llm.rag.search",
+    "analyze_image" => "llm.vision.analyze"
+  }
+
+  defp intent_to_capability(intent) do
+    Map.get(@intent_mappings, intent, intent)
+  end
+
+  defp intent_to_subject_pattern(intent) do
+    case intent_to_capability(intent) do
+      "task." <> _ -> "task"
+      "project." <> _ -> "project"
+      "inbox." <> _ -> "inbox"
+      "llm." <> _ -> "llm"
+      other -> other
+    end
   end
 
   defp filter_bots(bots, nil), do: bots

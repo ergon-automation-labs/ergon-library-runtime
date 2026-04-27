@@ -16,7 +16,6 @@ defmodule BotArmyRuntime.NATS.Conversation.Envelope do
   @source "bot_army_runtime"
 
   @valid_message_types ~w(query command clarify confirm result error gossip)
-  @valid_conversation_types ~w(request response followup mailbox)
 
   @doc """
   Build a full NATS envelope for a conversation request.
