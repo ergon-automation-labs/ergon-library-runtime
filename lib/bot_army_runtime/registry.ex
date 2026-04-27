@@ -25,6 +25,7 @@ defmodule BotArmyRuntime.Registry do
   @heartbeat_interval_ms 30_000
   @heartbeat_timeout_ms 5_000
   @stale_threshold_ms 40_000
+  @registry_queue_group "bot_army.registry.query.responders"
 
   # ============================================================================
   # Public API
@@ -123,9 +124,12 @@ defmodule BotArmyRuntime.Registry do
             "bot_army.registry.subject.providers.get"
           ]
           |> Enum.map(fn subject ->
-            case Gnat.sub(conn, self(), subject) do
+            case Gnat.sub(conn, self(), subject, queue_group: @registry_queue_group) do
               {:ok, sub} ->
-                Logger.info("[Registry] Subscribed to #{subject}")
+                Logger.info(
+                  "[Registry] Subscribed to #{subject} (queue_group=#{@registry_queue_group})"
+                )
+
                 sub
 
               {:error, reason} ->
@@ -153,7 +157,7 @@ defmodule BotArmyRuntime.Registry do
     cleaned_bots =
       state.bots
       |> Enum.reject(fn {_name, entry} ->
-        stale? = entry.last_heartbeat < threshold
+        stale? = entry.last_heartbeat_monotonic_ms < threshold
 
         if stale? do
           Logger.info("[Registry] Bot #{entry.name} offline (no heartbeat for 40s)")
@@ -189,13 +193,17 @@ defmodule BotArmyRuntime.Registry do
 
   @impl true
   def handle_cast({:register, bot_name, subjects}, state) do
-    now = System.monotonic_time(:millisecond)
+    now_monotonic = System.monotonic_time(:millisecond)
+    now_unix_ms = System.system_time(:millisecond)
+    existing_entry = Map.get(state.bots, bot_name)
+    registered_at = if existing_entry, do: existing_entry.registered_at, else: now_unix_ms
 
     entry = %{
       name: bot_name,
       subjects: subjects,
-      last_heartbeat: now,
-      registered_at: now
+      last_heartbeat_monotonic_ms: now_monotonic,
+      last_heartbeat_at: now_unix_ms,
+      registered_at: registered_at
     }
 
     Logger.info("[Registry] Bot registered: #{bot_name} with #{length(subjects)} subjects")
@@ -297,7 +305,8 @@ defmodule BotArmyRuntime.Registry do
 
     BotArmyRuntime.NATS.Reply.ok(%{
       "bots" => bots,
-      "count" => length(bots)
+      "count" => length(bots),
+      "responder" => responder_identity()
     })
   end
 
@@ -319,7 +328,8 @@ defmodule BotArmyRuntime.Registry do
 
               entry ->
                 BotArmyRuntime.NATS.Reply.ok(%{
-                  "bot" => format_bot_entry(entry)
+                  "bot" => format_bot_entry(entry),
+                  "responder" => responder_identity()
                 })
             end
           end
@@ -347,11 +357,12 @@ defmodule BotArmyRuntime.Registry do
 
     BotArmyRuntime.NATS.Reply.ok(%{
       "subjects" => subjects,
-      "count" => length(subjects)
+      "count" => length(subjects),
+      "responder" => responder_identity()
     })
   end
 
-  defp handle_subject_providers_query(body, _state) do
+  defp handle_subject_providers_query(body, state) do
     try do
       case Jason.decode(body) do
         {:ok, params} ->
@@ -360,12 +371,19 @@ defmodule BotArmyRuntime.Registry do
           if is_nil(subject) do
             BotArmyRuntime.NATS.Reply.error("subject parameter required", :missing_parameter)
           else
-            case get_subject_providers(subject) do
-              {:ok, discovery} ->
-                BotArmyRuntime.NATS.Reply.ok(%{"subject" => discovery})
+            providers = state.bots |> subject_index() |> Map.get(subject, [])
 
-              {:error, :not_found} ->
+            case providers do
+              [] ->
                 BotArmyRuntime.NATS.Reply.error("Subject not found: #{subject}", :not_found)
+
+              _ ->
+                discovery = format_subject_discovery(subject, providers)
+
+                BotArmyRuntime.NATS.Reply.ok(%{
+                  "subject" => discovery,
+                  "responder" => responder_identity()
+                })
             end
           end
 
@@ -385,9 +403,9 @@ defmodule BotArmyRuntime.Registry do
     %{
       "name" => entry.name,
       "registered_at" =>
-        DateTime.from_unix!(div(entry.registered_at, 1000)) |> DateTime.to_iso8601(),
+        entry.registered_at |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601(),
       "last_heartbeat" =>
-        DateTime.from_unix!(div(entry.last_heartbeat, 1000)) |> DateTime.to_iso8601(),
+        entry.last_heartbeat_at |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601(),
       "subject_count" => length(entry.subjects),
       "subjects" => Enum.map(entry.subjects, &format_subject/1)
     }
@@ -428,6 +446,13 @@ defmodule BotArmyRuntime.Registry do
       "subject" => subject,
       "provider_count" => length(providers),
       "providers" => Enum.sort_by(providers, & &1["bot_name"])
+    }
+  end
+
+  defp responder_identity do
+    %{
+      "node" => node() |> Atom.to_string(),
+      "pid" => self() |> inspect()
     }
   end
 end
