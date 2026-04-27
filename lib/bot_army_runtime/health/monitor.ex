@@ -221,7 +221,21 @@ defmodule BotArmyRuntime.Health.Monitor do
   defp parse_body(_), do: %{}
 
   defp publish(subject, payload) do
-    BotArmyRuntime.NATS.Publisher.publish(subject, payload)
+    envelope = build_envelope(subject, payload)
+    BotArmyRuntime.NATS.Publisher.publish(subject, envelope)
+  end
+
+  defp build_envelope(event, payload) do
+    %{
+      "event_id" => UUID.uuid4(),
+      "event" => event,
+      "schema_version" => "1.0",
+      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "source" => "bot_army_runtime",
+      "source_node" => node() |> Atom.to_string(),
+      "triggered_by" => "health_monitor",
+      "payload" => payload
+    }
   end
 
   defp schedule_check do
