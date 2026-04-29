@@ -1,6 +1,7 @@
 # Elixir
 /_build
 /deps
+/.cache/
 erl_crash.dump
 *.ez
 
