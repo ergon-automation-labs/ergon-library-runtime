@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.7.4">
+    <meta name="project" content="bot_army_runtime v0.9.2">
 
 
-    <title>BotArmy.Pulse — bot_army_runtime v0.7.4</title>
+    <title>BotArmy.Pulse — bot_army_runtime v0.9.2</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-7BED6585.js"></script>
+    <script defer src="dist/sidebar_items-327657A3.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.7.4
+          v0.9.2
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmy.<wbr>Pulse</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.4)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
 
     </h1>
 
@@ -126,11 +126,11 @@ each bot is doing.</p><h2 id="module-pulse-schema" class="section-heading"><a hr
     &quot;errors_today&quot;: 0
   }
 }</code></pre><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><pre><code class="makeup elixir" translate="no"><span class="c1"># Publish a pulse for the current bot</span><span class="w">
-</span><span class="nc">BotArmy.Pulse</span><span class="o">.</span><span class="n">publish</span><span class="p" data-group-id="1482900405-1">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="1482900405-2">%{</span><span class="w">
+</span><span class="nc">BotArmy.Pulse</span><span class="o">.</span><span class="n">publish</span><span class="p" data-group-id="5433099564-1">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="5433099564-2">%{</span><span class="w">
   </span><span class="ss">status</span><span class="p">:</span><span class="w"> </span><span class="ss">:active</span><span class="p">,</span><span class="w">
   </span><span class="ss">current_task</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;processing_inbox&quot;</span><span class="p">,</span><span class="w">
   </span><span class="ss">task_count</span><span class="p">:</span><span class="w"> </span><span class="mi">14</span><span class="w">
-</span><span class="p" data-group-id="1482900405-2">}</span><span class="p" data-group-id="1482900405-1">)</span></code></pre><h2 id="module-subscribers" class="section-heading"><a href="#module-subscribers" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Subscribers</span></h2><p>The Context Broker subscribes to all <code class="inline">bot.army.pulse.*</code> subjects to:</p><ul><li>Build a real-time &quot;army state&quot; dashboard</li><li>Detect stale bots (no pulse in 60s = potential issue)</li><li>Coordinate cross-bot activities</li></ul><p>Alerting on stale pulses is handled by <code class="inline">army.health.check</code> subscriber.</p>
+</span><span class="p" data-group-id="5433099564-2">}</span><span class="p" data-group-id="5433099564-1">)</span></code></pre><h2 id="module-subscribers" class="section-heading"><a href="#module-subscribers" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Subscribers</span></h2><p>The Context Broker subscribes to all <code class="inline">bot.army.pulse.*</code> subjects to:</p><ul><li>Build a real-time &quot;army state&quot; dashboard</li><li>Detect stale bots (no pulse in 60s = potential issue)</li><li>Coordinate cross-bot activities</li></ul><p>Alerting on stale pulses is handled by <code class="inline">army.health.check</code> subscriber.</p>
     </section>
 
 </div>

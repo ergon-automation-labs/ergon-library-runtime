@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.7.4">
+    <meta name="project" content="bot_army_runtime v0.9.2">
 
 
-    <title>BotArmyRuntime.NATS.Connection — bot_army_runtime v0.7.4</title>
+    <title>BotArmyRuntime.NATS.Connection — bot_army_runtime v0.9.2</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-7BED6585.js"></script>
+    <script defer src="dist/sidebar_items-327657A3.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.7.4
+          v0.9.2
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Connection</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.4)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
 
     </h1>
 
@@ -110,7 +110,7 @@ bot_army_runtime
 
     <section id="moduledoc">
 <p>Manages the connection to the NATS message bus.</p><p>Responsibilities:</p><ul><li>Establishing and maintaining a connection to NATS</li><li>Handling reconnection with exponential backoff</li><li>Managing the connection state</li><li>Providing a connection handle for publishers</li></ul><h2 id="module-configuration" class="section-heading"><a href="#module-configuration" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Configuration</span></h2><p>Configure in <code class="inline">config.exs</code>:</p><pre><code class="makeup elixir" translate="no"><span class="n">config</span><span class="w"> </span><span class="ss">:bot_army_runtime</span><span class="p">,</span><span class="w"> </span><span class="ss">:nats</span><span class="p">,</span><span class="w">
-  </span><span class="ss">servers</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="0545560523-1">[</span><span class="p" data-group-id="0545560523-2">{</span><span class="s">&quot;localhost&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">4222</span><span class="p" data-group-id="0545560523-2">}</span><span class="p" data-group-id="0545560523-1">]</span><span class="p">,</span><span class="w">
+  </span><span class="ss">servers</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="8327955537-1">[</span><span class="p" data-group-id="8327955537-2">{</span><span class="s">&quot;localhost&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">4222</span><span class="p" data-group-id="8327955537-2">}</span><span class="p" data-group-id="8327955537-1">]</span><span class="p">,</span><span class="w">
   </span><span class="ss">ping_interval</span><span class="p">:</span><span class="w"> </span><span class="mi">30_000</span><span class="p">,</span><span class="w">
   </span><span class="ss">max_reconnect_attempts</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w">
   </span><span class="ss">reconnect_delay_ms</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span></code></pre><h2 id="module-connection-handle" class="section-heading"><a href="#module-connection-handle" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Connection Handle</span></h2><p>The connection is stored in a named GenServer under <code class="inline">:gnat</code> key.

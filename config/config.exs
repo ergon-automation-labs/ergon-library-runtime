@@ -33,6 +33,7 @@ config :bot_army_runtime,
 config :sentry,
   dsn: System.get_env("SENTRY_DSN"),
   environment_name: config_env(),
+  json_library: JSON,
   included_environments: [:prod],
   enable_source_code_context: true,
   root_source_code_path: File.cwd!()

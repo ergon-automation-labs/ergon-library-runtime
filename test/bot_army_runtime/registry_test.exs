@@ -185,4 +185,69 @@ defmodule BotArmyRuntime.RegistryTest do
       {:error, :not_found} = BotArmyRuntime.Registry.get_subject_providers("missing.subject")
     end
   end
+
+  describe "version tracking" do
+    test "register/3 stores version" do
+      subjects = [%{subject: "test.task.create", type: :request_reply}]
+      BotArmyRuntime.Registry.register("versioned_bot", subjects, "1.2.3")
+
+      {:ok, bot} = BotArmyRuntime.Registry.get_bot("versioned_bot")
+      assert bot["version"] == "1.2.3"
+    end
+
+    test "register/2 defaults version to unknown" do
+      subjects = [%{subject: "test.task.create", type: :request_reply}]
+      BotArmyRuntime.Registry.register("unversioned_bot", subjects)
+
+      {:ok, bot} = BotArmyRuntime.Registry.get_bot("unversioned_bot")
+      assert bot["version"] == "unknown"
+    end
+  end
+
+  describe "capability APIs" do
+    test "find_by_capability returns matching bots" do
+      BotArmyRuntime.Registry.register("gtd", [
+        %{subject: "gtd.task.list", type: :request_reply, capabilities: ["task.query"]},
+        %{subject: "gtd.task.create", type: :request_reply, capabilities: ["task.create"]}
+      ])
+
+      BotArmyRuntime.Registry.register("automation", [
+        %{subject: "auto.task.list", type: :request_reply, capabilities: ["task.query"]}
+      ])
+
+      {:ok, bots} = BotArmyRuntime.Registry.find_by_capability("task.query")
+      assert "gtd" in bots
+      assert "automation" in bots
+    end
+
+    test "list_capabilities returns aggregated map" do
+      BotArmyRuntime.Registry.register("gtd", [
+        %{subject: "gtd.task.list", type: :request_reply, capabilities: ["task.query"]}
+      ])
+
+      {:ok, caps} = BotArmyRuntime.Registry.list_capabilities()
+      assert caps["task.query"] == ["gtd"]
+    end
+
+    test "find_target_for_intent routes by capability" do
+      BotArmyRuntime.Registry.register("gtd", [
+        %{subject: "gtd.task.list", type: :request_reply, capabilities: ["task.query"]}
+      ])
+
+      assert {:ok, "gtd"} = BotArmyRuntime.Registry.find_target_for_intent("list_tasks")
+    end
+
+    test "find_target_for_intent falls back to subject match" do
+      BotArmyRuntime.Registry.register("gtd", [
+        %{subject: "gtd.task.list", type: :request_reply}
+      ])
+
+      assert {:ok, "gtd"} = BotArmyRuntime.Registry.find_target_for_intent("task")
+    end
+
+    test "find_target_for_intent returns no_provider when nothing matches" do
+      assert {:error, :no_provider} =
+               BotArmyRuntime.Registry.find_target_for_intent("nonexistent_thing")
+    end
+  end
 end

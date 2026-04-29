@@ -8,7 +8,7 @@
     <meta name="project" content="bot_army_runtime v0.9.2">
 
 
-    <title>BotArmyRuntime.Health.Responder — bot_army_runtime v0.9.2</title>
+    <title>BotArmyRuntime.NATS.Conversation.Mailbox — bot_army_runtime v0.9.2</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -93,12 +93,12 @@ bot_army_runtime
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">BotArmyRuntime.<wbr>Health.<wbr>Responder</span> 
+      <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Conversation.<wbr>Mailbox</span> 
       <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
 
     </h1>
 
-<a href="BotArmyRuntime.Health.Responder.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="BotArmyRuntime.NATS.Conversation.Mailbox.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
@@ -109,9 +109,9 @@ bot_army_runtime
 
 
     <section id="moduledoc">
-<p>Shared health check responder for Bot Army services.</p><p>Subscribes to <code class="inline">bot.&lt;bot_name&gt;.health</code> on NATS (request/reply pattern).
-Reports NATS connectivity, database connectivity, key process liveness, and version.</p><p>Also provides subject registry: <code class="inline">bot.&lt;bot_name&gt;.subjects</code> returns metadata about
-what subjects this bot handles (request/reply and subscriptions).</p><p>Re-registers with ConnectionRegistry on reconnect so subscriptions are always active.</p>
+<p>Async mailbox messaging between bots.</p><p>Unlike conversations (which expect responses), mailbox messages are
+fire-and-forget. The receiving bot picks them up on its own schedule.</p><h2 id="module-patterns" class="section-heading"><a href="#module-patterns" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Patterns</span></h2><ul><li><a href="#send/4"><code class="inline">send/4</code></a> — Leave a message for another bot (publishes to <code class="inline">conv.mailbox.&lt;bot&gt;</code>)</li><li><a href="#subscribe/2"><code class="inline">subscribe/2</code></a> — Subscribe to incoming mailbox messages</li><li><code class="inline">ack/2</code> — Publish a read receipt</li></ul><p>No response is expected, though the receiving bot may optionally start
+a conversation in response to a mailbox message.</p>
     </section>
 
 </div>
@@ -130,29 +130,31 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#child_spec/1" data-no-tooltip="" translate="no">child_spec(init_arg)</a>
+        <a href="#ack/3" data-no-tooltip="" translate="no">ack(conn, conversation_id, bot_name)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Returns a specification to start this module under a supervisor.</p></div>
+        <div class="summary-synopsis"><p>Publish a read receipt for a mailbox message.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#register_subjects/1" data-no-tooltip="" translate="no">register_subjects(subjects)</a>
+        <a href="#send/5" data-no-tooltip="" translate="no">send(from_bot, to_bot, message_type, body, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Register subjects that this bot handles.</p></div>
+        <div class="summary-synopsis"><p>Send a mailbox message to a bot.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts)</a>
+        <a href="#subscribe/3" data-no-tooltip="" translate="no">subscribe(conn, bot_name, pid \\ self())</a>
 
       </div>
+
+        <div class="summary-synopsis"><p>Subscribe to mailbox messages for a given bot.</p></div>
 
     </div>
 
@@ -170,14 +172,14 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="child_spec/1">
+<section class="detail" id="ack/3">
 
   <div class="detail-header">
-    <a href="#child_spec/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#ack/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">child_spec(init_arg)</h1>
+      <h1 class="signature" translate="no">ack(conn, conversation_id, bot_name)</h1>
 
 
     </div>
@@ -185,17 +187,19 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
 
   <section class="docstring">
 
-<p>Returns a specification to start this module under a supervisor.</p><p>See <a href="https://hexdocs.pm/elixir/Supervisor.html"><code class="inline">Supervisor</code></a>.</p>
+<p>Publish a read receipt for a mailbox message.</p><p>Optional — helps with observability.</p>
   </section>
 </section>
-<section class="detail" id="register_subjects/1">
+<section class="detail" id="send/5">
+
+    <span id="send/4"></span>
 
   <div class="detail-header">
-    <a href="#register_subjects/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#send/5" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">register_subjects(subjects)</h1>
+      <h1 class="signature" translate="no">send(from_bot, to_bot, message_type, body, opts \\ [])</h1>
 
 
     </div>
@@ -203,20 +207,19 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
 
   <section class="docstring">
 
-<p>Register subjects that this bot handles.</p><p>subjects should be a list of maps:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="9413547717-1">[</span><span class="w">
-  </span><span class="p" data-group-id="9413547717-2">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;List tasks&quot;</span><span class="p" data-group-id="9413547717-2">}</span><span class="p">,</span><span class="w">
-  </span><span class="p" data-group-id="9413547717-3">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;events.gtd.task.&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:subscribe</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Task events&quot;</span><span class="p" data-group-id="9413547717-3">}</span><span class="w">
-</span><span class="p" data-group-id="9413547717-1">]</span></code></pre>
+<p>Send a mailbox message to a bot.</p><p>This is fire-and-forget. The sender does not wait for a response.</p><h2 id="send/5-options" class="section-heading"><a href="#send/5-options" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Options</span></h2><ul><li><code class="inline">:tenant_id</code> — Tenant context</li><li><code class="inline">:user_id</code> — User context</li><li><code class="inline">:priority</code> — Message priority (default: &quot;normal&quot;)</li><li><code class="inline">:expires_at</code> — ISO8601 timestamp when the message expires</li></ul>
   </section>
 </section>
-<section class="detail" id="start_link/1">
+<section class="detail" id="subscribe/3">
+
+    <span id="subscribe/2"></span>
 
   <div class="detail-header">
-    <a href="#start_link/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#subscribe/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">start_link(opts)</h1>
+      <h1 class="signature" translate="no">subscribe(conn, bot_name, pid \\ self())</h1>
 
 
     </div>
@@ -224,7 +227,10 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
 
   <section class="docstring">
 
-
+<p>Subscribe to mailbox messages for a given bot.</p><p>Returns <code class="inline">{:ok, subscription_ref}</code> on success.
+The caller receives <code class="inline">{:msg, %{topic:, body:, ...}}</code> messages.</p><p>When processing, check <code class="inline">topic</code> ends with your bot name, then
+decode and handle. Use <code class="inline">BotArmyCore.NATS.Decoder.decode/1</code> or
+<a href="https://hexdocs.pm/jason/1.4.4/Jason.html#decode/2"><code class="inline">Jason.decode/2</code></a> to parse the body.</p>
   </section>
 </section>
 

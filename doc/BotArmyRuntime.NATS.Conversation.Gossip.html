@@ -8,7 +8,7 @@
     <meta name="project" content="bot_army_runtime v0.9.2">
 
 
-    <title>BotArmyRuntime.Health.Responder — bot_army_runtime v0.9.2</title>
+    <title>BotArmyRuntime.NATS.Conversation.Gossip — bot_army_runtime v0.9.2</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -93,12 +93,12 @@ bot_army_runtime
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">BotArmyRuntime.<wbr>Health.<wbr>Responder</span> 
+      <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Conversation.<wbr>Gossip</span> 
       <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
 
     </h1>
 
-<a href="BotArmyRuntime.Health.Responder.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="BotArmyRuntime.NATS.Conversation.Gossip.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
@@ -109,9 +109,13 @@ bot_army_runtime
 
 
     <section id="moduledoc">
-<p>Shared health check responder for Bot Army services.</p><p>Subscribes to <code class="inline">bot.&lt;bot_name&gt;.health</code> on NATS (request/reply pattern).
-Reports NATS connectivity, database connectivity, key process liveness, and version.</p><p>Also provides subject registry: <code class="inline">bot.&lt;bot_name&gt;.subjects</code> returns metadata about
-what subjects this bot handles (request/reply and subscriptions).</p><p>Re-registers with ConnectionRegistry on reconnect so subscriptions are always active.</p>
+<p>Gossip/icebreaker engine for bot-to-bot conversation.</p><p>Called from heartbeat cycles, the gossip engine randomly selects
+a conversation partner and sends a casual message via the mailbox
+or conversation protocol.</p><h2 id="module-configuration" class="section-heading"><a href="#module-configuration" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Configuration</span></h2><pre><code class="makeup elixir" translate="no"><span class="n">config</span><span class="w"> </span><span class="ss">:bot_army_runtime</span><span class="p">,</span><span class="w"> </span><span class="ss">:gossip</span><span class="p">,</span><span class="w">
+  </span><span class="ss">enabled</span><span class="p">:</span><span class="w"> </span><span class="no">true</span><span class="p">,</span><span class="w">
+  </span><span class="ss">probability_per_cycle</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span><span class="w">   </span><span class="c1"># 5% chance per heartbeat</span><span class="w">
+  </span><span class="ss">only_when_idle</span><span class="p">:</span><span class="w"> </span><span class="no">true</span><span class="p">,</span><span class="w">          </span><span class="c1"># Skip if bot has pending work</span><span class="w">
+  </span><span class="ss">max_active_gossips</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="w">          </span><span class="c1"># Max concurrent gossip conversations</span></code></pre><h2 id="module-integration" class="section-heading"><a href="#module-integration" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Integration</span></h2><p>Call <code class="inline">Gossip.maybe_gossip/2</code> from your heartbeat cycle:</p><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.NATS.Conversation.Gossip</span><span class="o">.</span><span class="n">maybe_gossip</span><span class="p" data-group-id="5846403572-1">(</span><span class="s">&quot;gtd&quot;</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="5846403572-2">%{</span><span class="ss">idle</span><span class="p">:</span><span class="w"> </span><span class="no">true</span><span class="p">,</span><span class="w"> </span><span class="ss">metric</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;processed 150 events&quot;</span><span class="p" data-group-id="5846403572-2">}</span><span class="p" data-group-id="5846403572-1">)</span></code></pre>
     </section>
 
 </div>
@@ -130,29 +134,21 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#child_spec/1" data-no-tooltip="" translate="no">child_spec(init_arg)</a>
+        <a href="#gossip_now/2" data-no-tooltip="" translate="no">gossip_now(bot_name, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Returns a specification to start this module under a supervisor.</p></div>
+        <div class="summary-synopsis"><p>Force-send a gossip message from a bot. Useful for testing or manual triggers.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#register_subjects/1" data-no-tooltip="" translate="no">register_subjects(subjects)</a>
+        <a href="#maybe_gossip/2" data-no-tooltip="" translate="no">maybe_gossip(bot_name, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Register subjects that this bot handles.</p></div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts)</a>
-
-      </div>
+        <div class="summary-synopsis"><p>Called from heartbeat cycles. Randomly decides whether to send a gossip message.</p></div>
 
     </div>
 
@@ -170,14 +166,16 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="child_spec/1">
+<section class="detail" id="gossip_now/2">
+
+    <span id="gossip_now/1"></span>
 
   <div class="detail-header">
-    <a href="#child_spec/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#gossip_now/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">child_spec(init_arg)</h1>
+      <h1 class="signature" translate="no">gossip_now(bot_name, opts \\ [])</h1>
 
 
     </div>
@@ -185,17 +183,19 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
 
   <section class="docstring">
 
-<p>Returns a specification to start this module under a supervisor.</p><p>See <a href="https://hexdocs.pm/elixir/Supervisor.html"><code class="inline">Supervisor</code></a>.</p>
+<p>Force-send a gossip message from a bot. Useful for testing or manual triggers.</p>
   </section>
 </section>
-<section class="detail" id="register_subjects/1">
+<section class="detail" id="maybe_gossip/2">
+
+    <span id="maybe_gossip/1"></span>
 
   <div class="detail-header">
-    <a href="#register_subjects/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#maybe_gossip/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">register_subjects(subjects)</h1>
+      <h1 class="signature" translate="no">maybe_gossip(bot_name, opts \\ [])</h1>
 
 
     </div>
@@ -203,28 +203,7 @@ what subjects this bot handles (request/reply and subscriptions).</p><p>Re-regis
 
   <section class="docstring">
 
-<p>Register subjects that this bot handles.</p><p>subjects should be a list of maps:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="9413547717-1">[</span><span class="w">
-  </span><span class="p" data-group-id="9413547717-2">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;List tasks&quot;</span><span class="p" data-group-id="9413547717-2">}</span><span class="p">,</span><span class="w">
-  </span><span class="p" data-group-id="9413547717-3">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;events.gtd.task.&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:subscribe</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Task events&quot;</span><span class="p" data-group-id="9413547717-3">}</span><span class="w">
-</span><span class="p" data-group-id="9413547717-1">]</span></code></pre>
-  </section>
-</section>
-<section class="detail" id="start_link/1">
-
-  <div class="detail-header">
-    <a href="#start_link/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">start_link(opts)</h1>
-
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-
+<p>Called from heartbeat cycles. Randomly decides whether to send a gossip message.</p><p>Returns <code class="inline">:skipped</code>, <code class="inline">:no_partner</code>, or <code class="inline">{:gossip_sent, bot_name}</code>.</p><h2 id="maybe_gossip/2-options" class="section-heading"><a href="#maybe_gossip/2-options" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Options</span></h2><ul><li><code class="inline">:force</code> — Force gossip regardless of probability (for testing)</li><li><code class="inline">:idle</code> — Whether the bot is idle (default: true)</li><li><code class="inline">:metric</code> — Optional metric string to personalize the message</li><li><code class="inline">:mode</code> — <code class="inline">:mailbox</code> (default, async) or <code class="inline">:conversation</code> (expects response)</li></ul>
   </section>
 </section>
 

@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.7.4">
+    <meta name="project" content="bot_army_runtime v0.9.2">
 
 
-    <title>BotArmyRuntime.Registry — bot_army_runtime v0.7.4</title>
+    <title>BotArmyRuntime.Registry — bot_army_runtime v0.9.2</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-7BED6585.js"></script>
+    <script defer src="dist/sidebar_items-327657A3.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.7.4
+          v0.9.2
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmyRuntime.<wbr>Registry</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.7.4)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
 
     </h1>
 
@@ -110,7 +110,7 @@ bot_army_runtime
 
     <section id="moduledoc">
 <p>In-memory service discovery registry for the Bot Army ecosystem.</p><p>Maintains a registry of all active bots and their available NATS subjects,
-enabling service discovery and capability introspection.</p><p>Bots register themselves on startup via <a href="#register/2"><code class="inline">register/2</code></a>, providing:</p><ul><li>Bot name</li><li>Version</li><li>List of subjects with metadata (type, description, timeout)</li></ul><p>The registry responds to NATS queries:</p><ul><li><code class="inline">bot_army.registry.bots.list</code> - List all registered bots</li><li><code class="inline">bot_army.registry.bot.get</code> - Get details for a specific bot</li></ul><p>Detects offline bots via periodic heartbeat checks and cleans up stale entries.</p>
+enabling service discovery and capability introspection.</p><p>Bots register themselves on startup via <a href="#register/2"><code class="inline">register/2</code></a>, providing:</p><ul><li>Bot name</li><li>Version</li><li>List of subjects with metadata (type, description, timeout)</li></ul><p>The registry responds to NATS queries:</p><ul><li><code class="inline">bot_army.registry.bots.list</code> - List all registered bots</li><li><code class="inline">bot_army.registry.bot.get</code> - Get details for a specific bot</li><li><code class="inline">bot_army.registry.subjects.list</code> - List all known subjects and provider counts</li><li><code class="inline">bot_army.registry.subject.providers.get</code> - Get providers for a specific subject</li></ul><p>Detects offline bots via periodic heartbeat checks and cleans up stale entries.</p>
     </section>
 
 </div>
@@ -149,12 +149,43 @@ enabling service discovery and capability introspection.</p><p>Bots register the
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#find_by_capability/1" data-no-tooltip="" translate="no">find_by_capability(capability_name)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Find bots that provide a given capability.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#find_target_for_intent/1" data-no-tooltip="" translate="no">find_target_for_intent(intent)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Find the best bot to handle a given intent.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#get_bot/1" data-no-tooltip="" translate="no">get_bot(bot_name)</a>
 
       </div>
 
         <div class="summary-synopsis"><p>Get details for a specific bot.
 Returns: {:ok, bot_entry} or {:error, :not_found}</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#get_subject_providers/1" data-no-tooltip="" translate="no">get_subject_providers(subject)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Get all providers for a subject.
+Returns: {:ok, subject_entry} or {:error, :not_found}</p></div>
 
     </div>
 
@@ -171,11 +202,40 @@ Returns: {:ok, [bot_entries]} or {:error, reason}</p></div>
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#list_capabilities/0" data-no-tooltip="" translate="no">list_capabilities()</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>List all registered capabilities and which bots provide them.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#list_subjects/1" data-no-tooltip="" translate="no">list_subjects(filter \\ nil)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>List all known subjects across registered bots.
+Returns: {:ok, [subject_entries]}</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#register/2" data-no-tooltip="" translate="no">register(bot_name, subjects)</a>
 
       </div>
 
         <div class="summary-synopsis"><p>Register a bot with its subjects.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#register/3" data-no-tooltip="" translate="no">register(bot_name, subjects, version)</a>
+
+      </div>
 
     </div>
 
@@ -237,6 +297,43 @@ Returns: {:ok, [bot_entries]} or {:error, reason}</p></div>
 <p>Deregister a bot from the registry.</p>
   </section>
 </section>
+<section class="detail" id="find_by_capability/1">
+
+  <div class="detail-header">
+    <a href="#find_by_capability/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">find_by_capability(capability_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Find bots that provide a given capability.</p><p>Returns <code class="inline">{:ok, [bot_names]}</code> or <code class="inline">{:ok, []}</code> if none found.</p>
+  </section>
+</section>
+<section class="detail" id="find_target_for_intent/1">
+
+  <div class="detail-header">
+    <a href="#find_target_for_intent/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">find_target_for_intent(intent)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Find the best bot to handle a given intent.</p><p>Uses capability matching, falling back to subject name matching.
+Returns <code class="inline">{:ok, bot_name}</code> or <code class="inline">{:error, :no_provider}</code>.</p>
+  </section>
+</section>
 <section class="detail" id="get_bot/1">
 
   <div class="detail-header">
@@ -254,6 +351,25 @@ Returns: {:ok, [bot_entries]} or {:error, reason}</p></div>
 
 <p>Get details for a specific bot.
 Returns: {:ok, bot_entry} or {:error, :not_found}</p>
+  </section>
+</section>
+<section class="detail" id="get_subject_providers/1">
+
+  <div class="detail-header">
+    <a href="#get_subject_providers/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">get_subject_providers(subject)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Get all providers for a subject.
+Returns: {:ok, subject_entry} or {:error, :not_found}</p>
   </section>
 </section>
 <section class="detail" id="list_bots/1">
@@ -277,6 +393,45 @@ Returns: {:ok, bot_entry} or {:error, :not_found}</p>
 Returns: {:ok, [bot_entries]} or {:error, reason}</p>
   </section>
 </section>
+<section class="detail" id="list_capabilities/0">
+
+  <div class="detail-header">
+    <a href="#list_capabilities/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">list_capabilities()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>List all registered capabilities and which bots provide them.</p><p>Returns <code class="inline">{:ok, %{capability =&gt; [bot_names]}}</code></p>
+  </section>
+</section>
+<section class="detail" id="list_subjects/1">
+
+    <span id="list_subjects/0"></span>
+
+  <div class="detail-header">
+    <a href="#list_subjects/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">list_subjects(filter \\ nil)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>List all known subjects across registered bots.
+Returns: {:ok, [subject_entries]}</p>
+  </section>
+</section>
 <section class="detail" id="register/2">
 
   <div class="detail-header">
@@ -292,10 +447,28 @@ Returns: {:ok, [bot_entries]} or {:error, reason}</p>
 
   <section class="docstring">
 
-<p>Register a bot with its subjects.</p><p>subjects should be a list of maps:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="5910649011-1">[</span><span class="w">
-  </span><span class="p" data-group-id="5910649011-2">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.create&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Create task&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">timeout_ms</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p" data-group-id="5910649011-2">}</span><span class="p">,</span><span class="w">
-  </span><span class="p" data-group-id="5910649011-3">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;List tasks&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">timeout_ms</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p" data-group-id="5910649011-3">}</span><span class="w">
-</span><span class="p" data-group-id="5910649011-1">]</span></code></pre>
+<p>Register a bot with its subjects.</p><p>subjects should be a list of maps:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="8206795614-1">[</span><span class="w">
+  </span><span class="p" data-group-id="8206795614-2">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.create&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Create task&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">timeout_ms</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p" data-group-id="8206795614-2">}</span><span class="p">,</span><span class="w">
+  </span><span class="p" data-group-id="8206795614-3">%{</span><span class="ss">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gtd.task.list&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">type</span><span class="p">:</span><span class="w"> </span><span class="ss">:request_reply</span><span class="p">,</span><span class="w"> </span><span class="ss">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;List tasks&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">timeout_ms</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p" data-group-id="8206795614-3">}</span><span class="w">
+</span><span class="p" data-group-id="8206795614-1">]</span></code></pre>
+  </section>
+</section>
+<section class="detail" id="register/3">
+
+  <div class="detail-header">
+    <a href="#register/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">register(bot_name, subjects, version)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+
   </section>
 </section>
 <section class="detail" id="start_link/1">

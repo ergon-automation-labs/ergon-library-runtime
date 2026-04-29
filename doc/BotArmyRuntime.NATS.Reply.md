@@ -36,12 +36,27 @@ or on error:
 Build an error response.
 
 code is optional and should be an atom (e.g., :validation_error, :not_found).
+Automatically includes correlation_id if one is set in Logger.metadata.
+
+# `error_conversation`
+
+Build an error response with conversation metadata.
+
+The responding bot signals the conversation is complete (errored).
 
 # `ok`
 
 Build a success response.
 
 Returns JSON-encoded binary ready to send via Gnat.pub/3.
+Automatically includes correlation_id if one is set in Logger.metadata.
+
+# `ok_conversation`
+
+Build a success response with conversation metadata.
+
+Includes conversation_id, turn_number, and conversation_complete flag
+so the ConversationManager can track multi-turn state.
 
 ---
 

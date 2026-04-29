@@ -47,17 +47,23 @@ The payload is JSON-encoded and published with the NATS envelope structure.
 Publishes a message and waits for a reply (request-reply pattern).
 
 Useful for synchronous operations that expect a response from a service.
+Supports optional retry with exponential backoff and circuit breaker protection.
 
 ## Arguments
 
   - `subject` - NATS subject to publish to
   - `payload` - Message payload
-  - `timeout_ms` - Time to wait for a reply (default: 5000)
+  - `opts` - Optional keyword list with:
+    - `:timeout_ms` - Timeout for reply (default: 5000)
+    - `:max_retries` - Max retries on timeout/transient errors (default: 0)
+    - `:retry_base_ms` - Base delay for exponential backoff (default: 100)
+    - `:circuit_breaker_key` - Key for circuit breaker (optional, no CB if not set)
 
 ## Returns
 
   - `{:ok, reply_payload}` - Reply received (decoded as map)
   - `{:error, :timeout}` - No reply received within timeout
+  - `{:error, {:circuit_open, retry_after_ms}}` - Circuit breaker is open
   - `{:error, reason}` - Publishing or connection failed
 
 ---

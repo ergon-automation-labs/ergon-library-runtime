@@ -8,7 +8,7 @@
     <meta name="project" content="bot_army_runtime v0.9.2">
 
 
-    <title>BotArmyRuntime.NATS.JetStream — bot_army_runtime v0.9.2</title>
+    <title>BotArmyRuntime.NATS.Conversation.Envelope — bot_army_runtime v0.9.2</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -93,12 +93,12 @@ bot_army_runtime
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>JetStream</span> 
+      <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Conversation.<wbr>Envelope</span> 
       <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
 
     </h1>
 
-<a href="BotArmyRuntime.NATS.JetStream.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="BotArmyRuntime.NATS.Conversation.Envelope.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
@@ -109,9 +109,8 @@ bot_army_runtime
 
 
     <section id="moduledoc">
-<p>JetStream stream and consumer management for Bot Army services.</p><p>Provides idempotent creation of streams and durable consumers,
-ensuring messages are not lost during consumer disconnects.</p><p>Uses the gnat Jetstream API (Gnat.Jetstream.API.Stream and
-Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 id="module-stream-topology" class="section-heading"><a href="#module-stream-topology" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Stream Topology</span></h2><table><thead><tr><th style="text-align: left;">Stream</th><th style="text-align: left;">Subjects</th><th style="text-align: left;">Retention</th></tr></thead><tbody><tr><td style="text-align: left;">BOT_GTD</td><td style="text-align: left;">gtd.&gt;</td><td style="text-align: left;">30 days</td></tr><tr><td style="text-align: left;">BOT_LLM</td><td style="text-align: left;">llm.&gt;</td><td style="text-align: left;">7 days</td></tr><tr><td style="text-align: left;">BOT_JOBS</td><td style="text-align: left;">job.&gt;</td><td style="text-align: left;">30 days</td></tr><tr><td style="text-align: left;">BOT_EVENTS</td><td style="text-align: left;">events.&gt;</td><td style="text-align: left;">30 days</td></tr><tr><td style="text-align: left;">BOT_CLAUDE</td><td style="text-align: left;">bot_army.claude.&gt;</td><td style="text-align: left;">7 days</td></tr><tr><td style="text-align: left;">BOT_FITNESS</td><td style="text-align: left;">fitness.&gt;</td><td style="text-align: left;">7 days</td></tr><tr><td style="text-align: left;">BOT_CHORE</td><td style="text-align: left;">chore.&gt;</td><td style="text-align: left;">7 days</td></tr><tr><td style="text-align: left;">BOT_SRE</td><td style="text-align: left;">sre.&gt;</td><td style="text-align: left;">7 days</td></tr><tr><td style="text-align: left;">BOT_DLQ</td><td style="text-align: left;">dlq.&gt;</td><td style="text-align: left;">30 days</td></tr></tbody></table>
+<p>Build and validate conversation envelopes for cross-bot communication.</p><p>Provides constructors for the three conversation patterns:</p><ul><li><a href="#build_request/5"><code class="inline">build_request/5</code></a> — Start a new conversation (expects response)</li><li><code class="inline">build_response/6</code> — Reply to an ongoing conversation</li><li><a href="#build_followup/6"><code class="inline">build_followup/6</code></a> — Continue a multi-turn conversation</li><li><a href="#build_mailbox/5"><code class="inline">build_mailbox/5</code></a> — Async message (no response expected)</li></ul><p>All functions inject standard envelope fields (event_id, timestamp, schema_version)
+and accept optional overrides via opts.</p>
     </section>
 
 </div>
@@ -130,61 +129,81 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#ack/1" data-no-tooltip="" translate="no">ack(msg)</a>
+        <a href="#build_followup/6" data-no-tooltip="" translate="no">build_followup(conversation_id, from_bot, to_bot, message_type, body, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Acknowledge a JetStream message (confirm successful processing).</p></div>
+        <div class="summary-synopsis"><p>Build a follow-up turn in a multi-turn conversation.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#ensure_all_streams/1" data-no-tooltip="" translate="no">ensure_all_streams(conn)</a>
+        <a href="#build_mailbox/5" data-no-tooltip="" translate="no">build_mailbox(from_bot, to_bot, message_type, body, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Ensure all Bot Army streams exist. Idempotent — safe to call on every startup.</p></div>
+        <div class="summary-synopsis"><p>Build a mailbox message (async, no response expected).</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#ensure_consumer/4" data-no-tooltip="" translate="no">ensure_consumer(conn, stream_name, durable_name, opts \\ [])</a>
+        <a href="#build_request/5" data-no-tooltip="" translate="no">build_request(from_bot, to_bot, message_type, body, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Ensure a durable JetStream consumer exists. Idempotent.</p></div>
+        <div class="summary-synopsis"><p>Build a full NATS envelope for a conversation request.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#ensure_stream/4" data-no-tooltip="" translate="no">ensure_stream(conn, name, subjects, opts \\ [])</a>
+        <a href="#build_response/4" data-no-tooltip="" translate="no">build_response(original_envelope, from_bot, body, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Ensure a JetStream stream exists. Idempotent — no-op if stream already exists.</p></div>
+        <div class="summary-synopsis"><p>Build a response payload for an ongoing conversation.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#nack/1" data-no-tooltip="" translate="no">nack(msg)</a>
+        <a href="#extract_conversation_id/1" data-no-tooltip="" translate="no">extract_conversation_id(envelope)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Negatively acknowledge a JetStream message (trigger redelivery).</p></div>
+        <div class="summary-synopsis"><p>Extract the conversation_id from a decoded message.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#stream_configs/0" data-no-tooltip="" translate="no">stream_configs()</a>
+        <a href="#extract_message_type/1" data-no-tooltip="" translate="no">extract_message_type(envelope)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Return the stream configurations for external use (e.g., Salt automation).</p></div>
+        <div class="summary-synopsis"><p>Extract the message_type from a decoded message.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#extract_turn_number/1" data-no-tooltip="" translate="no">extract_turn_number(envelope)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Extract the turn_number from a decoded message.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#valid_envelope?/1" data-no-tooltip="" translate="no">valid_envelope?(envelope)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Validate that a map has the required conversation fields.</p></div>
 
     </div>
 
@@ -202,14 +221,16 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="ack/1">
+<section class="detail" id="build_followup/6">
+
+    <span id="build_followup/5"></span>
 
   <div class="detail-header">
-    <a href="#ack/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#build_followup/6" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">ack(msg)</h1>
+      <h1 class="signature" translate="no">build_followup(conversation_id, from_bot, to_bot, message_type, body, opts \\ [])</h1>
 
 
     </div>
@@ -217,17 +238,19 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
 
   <section class="docstring">
 
-<p>Acknowledge a JetStream message (confirm successful processing).</p>
+<p>Build a follow-up turn in a multi-turn conversation.</p>
   </section>
 </section>
-<section class="detail" id="ensure_all_streams/1">
+<section class="detail" id="build_mailbox/5">
+
+    <span id="build_mailbox/4"></span>
 
   <div class="detail-header">
-    <a href="#ensure_all_streams/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#build_mailbox/5" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">ensure_all_streams(conn)</h1>
+      <h1 class="signature" translate="no">build_mailbox(from_bot, to_bot, message_type, body, opts \\ [])</h1>
 
 
     </div>
@@ -235,19 +258,19 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
 
   <section class="docstring">
 
-<p>Ensure all Bot Army streams exist. Idempotent — safe to call on every startup.</p>
+<p>Build a mailbox message (async, no response expected).</p>
   </section>
 </section>
-<section class="detail" id="ensure_consumer/4">
+<section class="detail" id="build_request/5">
 
-    <span id="ensure_consumer/3"></span>
+    <span id="build_request/4"></span>
 
   <div class="detail-header">
-    <a href="#ensure_consumer/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#build_request/5" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">ensure_consumer(conn, stream_name, durable_name, opts \\ [])</h1>
+      <h1 class="signature" translate="no">build_request(from_bot, to_bot, message_type, body, opts \\ [])</h1>
 
 
     </div>
@@ -255,19 +278,19 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
 
   <section class="docstring">
 
-<p>Ensure a durable JetStream consumer exists. Idempotent.</p><p>Options:</p><ul><li><code class="inline">:deliver_subject</code> — push delivery subject (required for push consumers)</li><li><code class="inline">:deliver_policy</code> — <code class="inline">:last</code> (default), <code class="inline">:all</code>, <code class="inline">:new</code></li><li><code class="inline">:max_deliver</code> — max redelivery attempts (default 3)</li><li><code class="inline">:ack_policy</code> — <code class="inline">:explicit</code> (default), <code class="inline">:all</code>, <code class="inline">:none</code></li><li><code class="inline">:ack_wait</code> — ack timeout in nanoseconds (default 30s)</li></ul>
+<p>Build a full NATS envelope for a conversation request.</p><h2 id="build_request/5-options" class="section-heading"><a href="#build_request/5-options" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Options</span></h2><ul><li><code class="inline">:tenant_id</code> — Tenant context (default: &quot;default&quot;)</li><li><code class="inline">:user_id</code> — User context (default: nil)</li><li><code class="inline">:source</code> — Override source (default: &quot;bot_army_runtime&quot;)</li><li><code class="inline">:source_node</code> — Node name (default: node() atom)</li><li><code class="inline">:priority</code> — Message priority (default: &quot;normal&quot;)</li><li><code class="inline">:reply_to</code> — Optional reply target (default: nil)</li><li><code class="inline">:correlation_id</code> — Override correlation ID (default: auto)</li><li><code class="inline">:context</code> — Extra context map merged into body.context</li><li><code class="inline">:timeout_ms</code> — Suggested timeout for the request</li></ul>
   </section>
 </section>
-<section class="detail" id="ensure_stream/4">
+<section class="detail" id="build_response/4">
 
-    <span id="ensure_stream/3"></span>
+    <span id="build_response/3"></span>
 
   <div class="detail-header">
-    <a href="#ensure_stream/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#build_response/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">ensure_stream(conn, name, subjects, opts \\ [])</h1>
+      <h1 class="signature" translate="no">build_response(original_envelope, from_bot, body, opts \\ [])</h1>
 
 
     </div>
@@ -275,17 +298,18 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
 
   <section class="docstring">
 
-<p>Ensure a JetStream stream exists. Idempotent — no-op if stream already exists.</p>
+<p>Build a response payload for an ongoing conversation.</p><p>The <code class="inline">original_envelope</code> is the request being responded to.
+Extracts conversation_id and from_bot for response routing.</p>
   </section>
 </section>
-<section class="detail" id="nack/1">
+<section class="detail" id="extract_conversation_id/1">
 
   <div class="detail-header">
-    <a href="#nack/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#extract_conversation_id/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">nack(msg)</h1>
+      <h1 class="signature" translate="no">extract_conversation_id(envelope)</h1>
 
 
     </div>
@@ -293,17 +317,17 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
 
   <section class="docstring">
 
-<p>Negatively acknowledge a JetStream message (trigger redelivery).</p>
+<p>Extract the conversation_id from a decoded message.</p>
   </section>
 </section>
-<section class="detail" id="stream_configs/0">
+<section class="detail" id="extract_message_type/1">
 
   <div class="detail-header">
-    <a href="#stream_configs/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#extract_message_type/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">stream_configs()</h1>
+      <h1 class="signature" translate="no">extract_message_type(envelope)</h1>
 
 
     </div>
@@ -311,7 +335,43 @@ Gnat.Jetstream.API.Consumer for creation, Gnat.Jetstream for ack/nack).</p><h2 i
 
   <section class="docstring">
 
-<p>Return the stream configurations for external use (e.g., Salt automation).</p>
+<p>Extract the message_type from a decoded message.</p>
+  </section>
+</section>
+<section class="detail" id="extract_turn_number/1">
+
+  <div class="detail-header">
+    <a href="#extract_turn_number/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">extract_turn_number(envelope)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Extract the turn_number from a decoded message.</p>
+  </section>
+</section>
+<section class="detail" id="valid_envelope?/1">
+
+  <div class="detail-header">
+    <a href="#valid_envelope?/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">valid_envelope?(envelope)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Validate that a map has the required conversation fields.</p>
   </section>
 </section>
 

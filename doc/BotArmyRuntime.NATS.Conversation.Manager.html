@@ -8,7 +8,7 @@
     <meta name="project" content="bot_army_runtime v0.9.2">
 
 
-    <title>BotArmyRuntime.NATS.Dedup — bot_army_runtime v0.9.2</title>
+    <title>BotArmyRuntime.NATS.Conversation.Manager — bot_army_runtime v0.9.2</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -93,12 +93,12 @@ bot_army_runtime
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Dedup</span> 
+      <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Conversation.<wbr>Manager</span> 
       <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
 
     </h1>
 
-<a href="BotArmyRuntime.NATS.Dedup.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="BotArmyRuntime.NATS.Conversation.Manager.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
@@ -109,9 +109,8 @@ bot_army_runtime
 
 
     <section id="moduledoc">
-<p>ETS-based sliding window deduplication for NATS events.</p><p>Prevents duplicate processing of messages that may be redelivered
-by JetStream or retried by publishers. Uses a 1-minute sliding
-window with up to 10K entries.</p><p>Fast read path via ETS — no GenServer call needed for <a href="#seen?/1"><code class="inline">seen?/1</code></a>.</p>
+<p>Manages cross-bot conversations.</p><p>Tracks active conversations, routes responses to callers, enforces timeouts,
+supports multi-turn dialogues, and publishes lifecycle events.</p><h2 id="module-conversation-lifecycle" class="section-heading"><a href="#module-conversation-lifecycle" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Conversation Lifecycle</span></h2><ol><li><a href="#start_conversation/5"><code class="inline">start_conversation/5</code></a> — Bot A asks Bot B a question<ul><li>Publishes <code class="inline">conv.request.&lt;bot&gt;.&lt;id&gt;</code></li><li>Subscribes to <code class="inline">conv.response.&lt;id&gt;</code></li><li>Sets timeout</li></ul></li><li>Bot B replies via <a href="#reply/4"><code class="inline">reply/4</code></a><ul><li>Publishes <code class="inline">conv.response.&lt;id&gt;</code></li><li>Manager delivers to caller</li><li>If <code class="inline">conversation_complete=true</code>, marks done</li></ul></li><li>Optionally: <a href="#followup/6"><code class="inline">followup/6</code></a> for multi-turn</li><li>Timeout or completion cleans up state</li></ol><h2 id="module-event-publishing" class="section-heading"><a href="#module-event-publishing" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Event Publishing</span></h2><p>Every state transition publishes an <code class="inline">events.conversation.*</code> event.</p>
     </section>
 
 </div>
@@ -130,11 +129,11 @@ window with up to 10K entries.</p><p>Fast read path via ETS — no GenServer cal
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#check_and_mark/1" data-no-tooltip="" translate="no">check_and_mark(event_id)</a>
+        <a href="#cancel/2" data-no-tooltip="" translate="no">cancel(conversation_id, reason \\ :cancelled)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Check and mark atomically. Returns <code class="inline">:new</code> if not seen, <code class="inline">:duplicate</code> if already seen.</p></div>
+        <div class="summary-synopsis"><p>Cancel a conversation.</p></div>
 
     </div>
 
@@ -150,28 +149,57 @@ window with up to 10K entries.</p><p>Fast read path via ETS — no GenServer cal
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#mark_seen/1" data-no-tooltip="" translate="no">mark_seen(event_id)</a>
+        <a href="#followup/6" data-no-tooltip="" translate="no">followup(conversation_id, from_bot, to_bot, message_type, body, opts \\ [])</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Mark an event_id as seen. Fast ETS insert.</p></div>
+        <div class="summary-synopsis"><p>Send a follow-up turn in an ongoing conversation.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#seen?/1" data-no-tooltip="" translate="no">seen?(event_id)</a>
+        <a href="#get_conversation/1" data-no-tooltip="" translate="no">get_conversation(conversation_id)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Check if an event_id has been seen within the dedup window.
-Fast ETS lookup — no GenServer call.</p></div>
+        <div class="summary-synopsis"><p>Get conversation state by ID.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts \\ [])</a>
+        <a href="#list_active/1" data-no-tooltip="" translate="no">list_active(filter \\ nil)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>List active conversations, optionally filtered by status.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#reply/4" data-no-tooltip="" translate="no">reply(conversation_id, from_bot, body, opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Reply to an ongoing conversation.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#start_conversation/5" data-no-tooltip="" translate="no">start_conversation(from_bot, to_bot, message_type, body, opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Start a new conversation with another bot.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts)</a>
 
       </div>
 
@@ -191,14 +219,16 @@ Fast ETS lookup — no GenServer call.</p></div>
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="check_and_mark/1">
+<section class="detail" id="cancel/2">
+
+    <span id="cancel/1"></span>
 
   <div class="detail-header">
-    <a href="#check_and_mark/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#cancel/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">check_and_mark(event_id)</h1>
+      <h1 class="signature" translate="no">cancel(conversation_id, reason \\ :cancelled)</h1>
 
 
     </div>
@@ -206,7 +236,7 @@ Fast ETS lookup — no GenServer call.</p></div>
 
   <section class="docstring">
 
-<p>Check and mark atomically. Returns <code class="inline">:new</code> if not seen, <code class="inline">:duplicate</code> if already seen.</p>
+<p>Cancel a conversation.</p>
   </section>
 </section>
 <section class="detail" id="child_spec/1">
@@ -227,14 +257,16 @@ Fast ETS lookup — no GenServer call.</p></div>
 <p>Returns a specification to start this module under a supervisor.</p><p>See <a href="https://hexdocs.pm/elixir/Supervisor.html"><code class="inline">Supervisor</code></a>.</p>
   </section>
 </section>
-<section class="detail" id="mark_seen/1">
+<section class="detail" id="followup/6">
+
+    <span id="followup/5"></span>
 
   <div class="detail-header">
-    <a href="#mark_seen/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#followup/6" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">mark_seen(event_id)</h1>
+      <h1 class="signature" translate="no">followup(conversation_id, from_bot, to_bot, message_type, body, opts \\ [])</h1>
 
 
     </div>
@@ -242,17 +274,17 @@ Fast ETS lookup — no GenServer call.</p></div>
 
   <section class="docstring">
 
-<p>Mark an event_id as seen. Fast ETS insert.</p>
+<p>Send a follow-up turn in an ongoing conversation.</p>
   </section>
 </section>
-<section class="detail" id="seen?/1">
+<section class="detail" id="get_conversation/1">
 
   <div class="detail-header">
-    <a href="#seen?/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#get_conversation/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">seen?(event_id)</h1>
+      <h1 class="signature" translate="no">get_conversation(conversation_id)</h1>
 
 
     </div>
@@ -260,20 +292,80 @@ Fast ETS lookup — no GenServer call.</p></div>
 
   <section class="docstring">
 
-<p>Check if an event_id has been seen within the dedup window.
-Fast ETS lookup — no GenServer call.</p>
+<p>Get conversation state by ID.</p>
+  </section>
+</section>
+<section class="detail" id="list_active/1">
+
+    <span id="list_active/0"></span>
+
+  <div class="detail-header">
+    <a href="#list_active/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">list_active(filter \\ nil)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>List active conversations, optionally filtered by status.</p>
+  </section>
+</section>
+<section class="detail" id="reply/4">
+
+    <span id="reply/3"></span>
+
+  <div class="detail-header">
+    <a href="#reply/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">reply(conversation_id, from_bot, body, opts \\ [])</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Reply to an ongoing conversation.</p><p>Called by the responding bot's handler. Publishes the response on
+<code class="inline">conv.response.&lt;conversation_id&gt;</code> and marks the conversation as
+completed if <code class="inline">conversation_complete</code> is true in opts.</p><h2 id="reply/4-options" class="section-heading"><a href="#reply/4-options" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Options</span></h2><ul><li><code class="inline">:conversation_complete</code> — Whether this reply ends the conversation (default: true)</li><li><code class="inline">:message_type</code> — Type of response (default: &quot;result&quot;)</li></ul>
+  </section>
+</section>
+<section class="detail" id="start_conversation/5">
+
+    <span id="start_conversation/4"></span>
+
+  <div class="detail-header">
+    <a href="#start_conversation/5" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">start_conversation(from_bot, to_bot, message_type, body, opts \\ [])</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Start a new conversation with another bot.</p><p>Returns <code class="inline">{:ok, conversation_id}</code> immediately. The response is delivered
+as a message to the calling process: <code class="inline">{:conv_reply, conversation_id, body}</code></p><h2 id="start_conversation/5-options" class="section-heading"><a href="#start_conversation/5-options" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Options</span></h2><ul><li><code class="inline">:timeout_ms</code> — How long to wait before timing out (default: 30_000)</li><li><code class="inline">:max_turns</code> — Maximum follow-up exchanges (default: 5)</li><li><code class="inline">:tenant_id</code> — Tenant context</li><li><code class="inline">:user_id</code> — User context</li><li><code class="inline">:context</code> — Extra context merged into body.context</li><li><code class="inline">:priority</code> — Message priority (default: &quot;normal&quot;)</li></ul>
   </section>
 </section>
 <section class="detail" id="start_link/1">
-
-    <span id="start_link/0"></span>
 
   <div class="detail-header">
     <a href="#start_link/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">start_link(opts \\ [])</h1>
+      <h1 class="signature" translate="no">start_link(opts)</h1>
 
 
     </div>
