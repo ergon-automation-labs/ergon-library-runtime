@@ -1,5 +1,5 @@
 defmodule BotArmyRuntime.RegistryTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   @moduletag :core
 
   setup do
@@ -45,6 +45,25 @@ defmodule BotArmyRuntime.RegistryTest do
       {:ok, bots} = BotArmyRuntime.Registry.list_bots()
       assert length(bots) == 1
       assert bots |> List.first() |> Map.get("subject_count") == 2
+    end
+
+    test "accepts JSON-shaped string-key subject maps (presence decode shape)" do
+      subjects = [
+        %{
+          "subject" => "synapse.log.create",
+          "type" => "request_reply",
+          "description" => "Create log entry",
+          "timeout_ms" => 5000
+        }
+      ]
+
+      BotArmyRuntime.Registry.register("json_shape_bot", subjects)
+
+      {:ok, [bot]} = BotArmyRuntime.Registry.list_bots()
+      assert bot["name"] == "json_shape_bot"
+      [subj | _] = bot["subjects"]
+      assert subj["subject"] == "synapse.log.create"
+      assert subj["type"] == "request_reply"
     end
   end
 

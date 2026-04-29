@@ -248,10 +248,12 @@ defmodule BotArmyRuntime.Registry do
     now_unix_ms = System.system_time(:millisecond)
     resolved_version = version || "unknown"
     state = upsert_bot_entry(state, bot_name, subjects, resolved_version, now_unix_ms)
-    broadcast_presence(state, bot_name, subjects, resolved_version, now_unix_ms)
+    entry = Map.fetch!(state.bots, bot_name)
+
+    broadcast_presence(state, bot_name, entry.subjects, resolved_version, now_unix_ms)
 
     Logger.info(
-      "[Registry] Bot registered: #{bot_name} v#{resolved_version} with #{length(subjects)} subjects"
+      "[Registry] Bot registered: #{bot_name} v#{resolved_version} with #{length(entry.subjects)} subjects"
     )
 
     {:noreply, state}
@@ -774,6 +776,57 @@ defmodule BotArmyRuntime.Registry do
       else: " (queue_group=#{@registry_queue_group})"
   end
 
+  # Presence payloads and some callers decode subjects as string-key maps; normalize
+  # once at the storage boundary so list/format paths can assume atom keys.
+  defp normalize_subject_record(subject) when is_map(subject) do
+    subject_name = Map.get(subject, :subject) || Map.get(subject, "subject")
+    type_raw = Map.get(subject, :type) || Map.get(subject, "type")
+    description = Map.get(subject, :description) || Map.get(subject, "description") || ""
+    timeout_ms = Map.get(subject, :timeout_ms) || Map.get(subject, "timeout_ms") || 5000
+
+    base = %{
+      subject: subject_name,
+      type: normalize_subject_type(type_raw),
+      description: description,
+      timeout_ms: timeout_ms
+    }
+
+    base =
+      case Map.get(subject, :capabilities) || Map.get(subject, "capabilities") do
+        nil -> base
+        caps -> Map.put(base, :capabilities, caps)
+      end
+
+    case Map.get(subject, :conversation_support) || Map.get(subject, "conversation_support") do
+      nil -> base
+      cs -> Map.put(base, :conversation_support, cs)
+    end
+  end
+
+  defp normalize_subject_type(t) when is_atom(t), do: t
+
+  defp normalize_subject_type(t) when is_binary(t) do
+    case t do
+      "request_reply" ->
+        :request_reply
+
+      "pub_sub" ->
+        :pub_sub
+
+      "subscribe" ->
+        :subscribe
+
+      _ ->
+        try do
+          String.to_existing_atom(t)
+        rescue
+          ArgumentError -> :request_reply
+        end
+    end
+  end
+
+  defp normalize_subject_type(_), do: :request_reply
+
   defp upsert_bot_entry(state, bot_name, subjects, version, heartbeat_at_unix_ms) do
     now_monotonic = System.monotonic_time(:millisecond)
     existing_entry = Map.get(state.bots, bot_name)
@@ -781,10 +834,12 @@ defmodule BotArmyRuntime.Registry do
     registered_at =
       if existing_entry, do: existing_entry.registered_at, else: heartbeat_at_unix_ms
 
+    normalized_subjects = Enum.map(subjects, &normalize_subject_record/1)
+
     entry = %{
       name: bot_name,
       version: version || "unknown",
-      subjects: subjects,
+      subjects: normalized_subjects,
       last_heartbeat_monotonic_ms: now_monotonic,
       last_heartbeat_at: heartbeat_at_unix_ms,
       registered_at: registered_at
