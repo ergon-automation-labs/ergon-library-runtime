@@ -26,6 +26,7 @@ defmodule BotArmyRuntime.Registry do
   @heartbeat_timeout_ms 5_000
   @stale_threshold_ms 40_000
   @registry_queue_group "bot_army.registry.query.responders"
+  @registry_presence_subject "bot_army.registry.presence"
 
   # ───────────────────────────────────────────────────────────────────────────
   # Capability API
@@ -162,14 +163,20 @@ defmodule BotArmyRuntime.Registry do
             "bot_army.registry.subject.providers.get",
             "bot_army.registry.capabilities.list",
             "conv.registry.capabilities.find",
-            "conv.registry.conversation.target"
+            "conv.registry.conversation.target",
+            @registry_presence_subject
           ]
           |> Enum.map(fn subject ->
-            case Gnat.sub(conn, self(), subject, queue_group: @registry_queue_group) do
+            subscribe_opts =
+              if subject == @registry_presence_subject do
+                []
+              else
+                [queue_group: @registry_queue_group]
+              end
+
+            case Gnat.sub(conn, self(), subject, subscribe_opts) do
               {:ok, sub} ->
-                Logger.info(
-                  "[Registry] Subscribed to #{subject} (queue_group=#{@registry_queue_group})"
-                )
+                Logger.info("[Registry] Subscribed to #{subject}#{queue_group_suffix(subject)}")
 
                 sub
 
@@ -216,7 +223,11 @@ defmodule BotArmyRuntime.Registry do
 
   @impl true
   def handle_info({:msg, msg}, state) do
-    handle_nats_query(msg, state)
+    if msg.topic == @registry_presence_subject do
+      handle_presence_message(msg, state)
+    else
+      handle_nats_query(msg, state)
+    end
   end
 
   @impl true
@@ -234,28 +245,16 @@ defmodule BotArmyRuntime.Registry do
 
   @impl true
   def handle_cast({:register, bot_name, subjects, version}, state) do
-    now_monotonic = System.monotonic_time(:millisecond)
     now_unix_ms = System.system_time(:millisecond)
-    existing_entry = Map.get(state.bots, bot_name)
-    registered_at = if existing_entry, do: existing_entry.registered_at, else: now_unix_ms
-
-    entry = %{
-      name: bot_name,
-      version: version || "unknown",
-      subjects: subjects,
-      last_heartbeat_monotonic_ms: now_monotonic,
-      last_heartbeat_at: now_unix_ms,
-      registered_at: registered_at
-    }
-
-    # Rebuild capability index
-    capabilities = build_capability_index(%{state | bots: Map.put(state.bots, bot_name, entry)})
+    resolved_version = version || "unknown"
+    state = upsert_bot_entry(state, bot_name, subjects, resolved_version, now_unix_ms)
+    broadcast_presence(state, bot_name, subjects, resolved_version, now_unix_ms)
 
     Logger.info(
-      "[Registry] Bot registered: #{bot_name} v#{entry.version} with #{length(subjects)} subjects"
+      "[Registry] Bot registered: #{bot_name} v#{resolved_version} with #{length(subjects)} subjects"
     )
 
-    {:noreply, %{state | bots: Map.put(state.bots, bot_name, entry), capabilities: capabilities}}
+    {:noreply, state}
   end
 
   @impl true
@@ -402,6 +401,23 @@ defmodule BotArmyRuntime.Registry do
 
   defp handle_nats_query(_msg, state) do
     {:noreply, state}
+  end
+
+  defp handle_presence_message(%{body: body}, state) do
+    case Jason.decode(body) do
+      {:ok, %{"bot_name" => bot_name, "subjects" => subjects} = payload}
+      when is_binary(bot_name) and is_list(subjects) ->
+        version = Map.get(payload, "version", "unknown")
+        heartbeat_at = Map.get(payload, "heartbeat_at", System.system_time(:millisecond))
+        {:noreply, upsert_bot_entry(state, bot_name, subjects, version, heartbeat_at)}
+
+      {:ok, _} ->
+        {:noreply, state}
+
+      {:error, reason} ->
+        Logger.debug("[Registry] Ignoring invalid presence payload: #{inspect(reason)}")
+        {:noreply, state}
+    end
   end
 
   defp handle_bots_list_query(state) do
@@ -750,5 +766,51 @@ defmodule BotArmyRuntime.Registry do
       "node" => node() |> Atom.to_string(),
       "pid" => self() |> inspect()
     }
+  end
+
+  defp queue_group_suffix(subject) do
+    if subject == @registry_presence_subject,
+      do: "",
+      else: " (queue_group=#{@registry_queue_group})"
+  end
+
+  defp upsert_bot_entry(state, bot_name, subjects, version, heartbeat_at_unix_ms) do
+    now_monotonic = System.monotonic_time(:millisecond)
+    existing_entry = Map.get(state.bots, bot_name)
+
+    registered_at =
+      if existing_entry, do: existing_entry.registered_at, else: heartbeat_at_unix_ms
+
+    entry = %{
+      name: bot_name,
+      version: version || "unknown",
+      subjects: subjects,
+      last_heartbeat_monotonic_ms: now_monotonic,
+      last_heartbeat_at: heartbeat_at_unix_ms,
+      registered_at: registered_at
+    }
+
+    bots = Map.put(state.bots, bot_name, entry)
+    capabilities = build_capability_index(%{state | bots: bots})
+    %{state | bots: bots, capabilities: capabilities}
+  end
+
+  defp broadcast_presence(state, bot_name, subjects, version, heartbeat_at_unix_ms) do
+    if state.connection do
+      payload = %{
+        "bot_name" => bot_name,
+        "version" => version,
+        "subjects" => Enum.map(subjects, &format_subject/1),
+        "heartbeat_at" => heartbeat_at_unix_ms
+      }
+
+      case Jason.encode(payload) do
+        {:ok, body} ->
+          Gnat.pub(state.connection, @registry_presence_subject, body)
+
+        {:error, reason} ->
+          Logger.debug("[Registry] Failed to encode presence payload: #{inspect(reason)}")
+      end
+    end
   end
 end
