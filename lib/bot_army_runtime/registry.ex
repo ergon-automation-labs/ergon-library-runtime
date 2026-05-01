@@ -735,7 +735,44 @@ defmodule BotArmyRuntime.Registry do
   end
 
   defp filter_bots(bots, nil), do: bots
-  # TODO: Implement health-based filtering
+
+  defp filter_bots(bots, filter) when is_map(filter) do
+    min_health = Map.get(filter, "min_health", 0.0)
+    status_filter = Map.get(filter, "status")
+    subjects_filter = Map.get(filter, "subjects")
+
+    bots
+    |> Enum.filter(fn bot ->
+      health_score = Map.get(bot, :health_score, Map.get(bot, "health_score", 1.0))
+      bot_status = Map.get(bot, :status, Map.get(bot, "health_status", "healthy"))
+
+      health_ok = health_score >= min_health
+
+      status_ok =
+        case status_filter do
+          nil -> true
+          sf when is_binary(sf) -> bot_status == sf
+          sf when is_list(sf) -> bot_status in sf
+          _ -> true
+        end
+
+      subjects_ok =
+        case subjects_filter do
+          nil ->
+            true
+
+          sf when is_list(sf) ->
+            bot_subjects = Map.get(bot, :subjects, []) |> Enum.map(& &1.subject)
+            Enum.any?(sf, fn s -> s in bot_subjects end)
+
+          _ ->
+            true
+        end
+
+      health_ok and status_ok and subjects_ok
+    end)
+  end
+
   defp filter_bots(bots, _filter), do: bots
 
   defp subject_index(bots_map) do
