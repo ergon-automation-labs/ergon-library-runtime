@@ -45,7 +45,15 @@ defmodule BotArmy.Pulse do
   - Coordinate cross-bot activities
 
   Alerting on stale pulses is handled by `army.health.check` subscriber.
+
+  ## Observability
+
+  Each publish emits `[:bot_army, :personality, :pulse, :publish]` with `outcome` `:ok` or
+  `:error` (NATS down still surfaces as a metric). See `BotArmyRuntime.Personality.Observability`.
   """
+
+  alias BotArmyRuntime.NATS.Publisher
+  alias BotArmyRuntime.Personality.Observability
 
   @doc """
   Publish a pulse for a bot.
@@ -55,9 +63,10 @@ defmodule BotArmy.Pulse do
   @spec publish(atom() | String.t(), map(), opts :: [tenant_id: String.t()]) :: :ok
   def publish(bot_id, state, opts \\ []) do
     tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
+    bot_id_str = bot_id |> normalize_bot_id()
 
     payload = %{
-      bot_id: Atom.to_string(bot_id),
+      bot_id: bot_id_str,
       tenant_id: tenant_id,
       timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
       status: Map.get(state, :status, :active),
@@ -69,9 +78,41 @@ defmodule BotArmy.Pulse do
       heartbeat_count: Map.get(state, :heartbeat_count, 0)
     }
 
-    BotArmyRuntime.NATS.Publisher.publish("bot.army.pulse.#{bot_id}", payload)
-    :ok
+    subject = "bot.army.pulse.#{bot_id_str}"
+
+    case Publisher.publish(subject, payload) do
+      {:ok, _} ->
+        Observability.pulse_publish(
+          bot_id_str,
+          tenant_id_label(tenant_id),
+          subject,
+          :ok,
+          nil
+        )
+
+        :ok
+
+      {:error, reason} ->
+        Observability.pulse_publish(
+          bot_id_str,
+          tenant_id_label(tenant_id),
+          subject,
+          :error,
+          error_message(reason)
+        )
+
+        :ok
+    end
   end
+
+  defp normalize_bot_id(b) when is_atom(b), do: Atom.to_string(b)
+  defp normalize_bot_id(b) when is_binary(b), do: b
+
+  defp tenant_id_label(t) when is_binary(t), do: t
+  defp tenant_id_label(other), do: inspect(other)
+
+  defp error_message(%_{} = e), do: Exception.message(e)
+  defp error_message(other), do: inspect(other)
 
   @doc """
   Build a pulse state from bot metadata.

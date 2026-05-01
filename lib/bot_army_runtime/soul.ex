@@ -48,13 +48,24 @@ defmodule BotArmy.Soul do
   # Get soul for a specific tenant
   soul = BotArmy.Soul.get(:gtd_bot, tenant_id: "uuid-here")
 
-  # Update soul config
-  {:ok, _} = BotArmy.Soul.update(:gtd_bot, %{tone: "more sarcastic"})
+  # Upsert soul config (persists JSONB row per bot_id + tenant_id)
+  {:ok, _} = BotArmy.Soul.upsert(:gtd_bot, %{"identity" => %{...}, "tone" => "more sarcastic"})
   ```
+
+  ## Observability
+
+  Loads, upserts, and NATS publishes emit `[:bot_army, :personality, :soul, :get | :upsert | :publish]` telemetry
+  (see `BotArmyRuntime.Personality.Observability`) and structured logs. Pass `telemetry: false`
+  to `get/2` only when probing version inside `upsert/3` to avoid duplicate load metrics.
+
+  PromEx scrapes counters and latency histograms via `BotArmyRuntime.Metrics.PromExPlugin`.
   """
 
   use Ecto.Schema
   import Ecto.Changeset
+
+  alias BotArmyRuntime.NATS.Publisher
+  alias BotArmyRuntime.Personality.Observability
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -110,14 +121,30 @@ defmodule BotArmy.Soul do
       %BotArmy.Soul{config: %{"identity" => %{...}}}
 
   """
-  @spec get(atom() | String.t(), opts :: [tenant_id: String.t(), repo: module()]) ::
+  @spec get(
+          atom() | String.t(),
+          opts :: [tenant_id: String.t(), repo: module(), telemetry: boolean()]
+        ) ::
           %__MODULE__{} | nil
   def get(bot_id, opts \\ []) when is_atom(bot_id) or is_binary(bot_id) do
+    telemetry? = Keyword.get(opts, :telemetry, true)
+    start_mono = if telemetry?, do: System.monotonic_time(), else: nil
+
     bot_id_str = Atom.to_string(bot_id) |> String.replace_prefix("bot_army_", "")
 
     tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
     repo = Keyword.get(opts, :repo, BotArmyRuntime.Ecto.Repo)
 
+    result = query_soul_row(repo, bot_id_str, tenant_id)
+
+    if telemetry? && start_mono do
+      emit_soul_get_observability(start_mono, bot_id_str, tenant_id, result)
+    end
+
+    soul_from_query_tag(result)
+  end
+
+  defp query_soul_row(repo, bot_id_str, tenant_id) do
     query = """
     SELECT * FROM souls
     WHERE bot_id = $1
@@ -129,27 +156,50 @@ defmodule BotArmy.Soul do
 
     case repo.query(query, [bot_id_str, tenant_id]) do
       {:ok, %Postgrex.Result{rows: []}} ->
-        nil
+        {:missing, nil}
 
       {:ok,
        %Postgrex.Result{
-         rows: [[id, bot_id, tenant_id, config, version, active, inserted_at, updated_at]]
+         rows: [
+           [id, row_bot_id, row_tenant_id, config, version, active, inserted_at, updated_at]
+         ]
        }} ->
-        %__MODULE__{
-          id: id,
-          bot_id: bot_id,
-          tenant_id: tenant_id,
-          config: config,
-          version: version,
-          active: active,
-          inserted_at: inserted_at,
-          updated_at: updated_at
-        }
+        {:found,
+         %__MODULE__{
+           id: id,
+           bot_id: row_bot_id,
+           tenant_id: row_tenant_id,
+           config: config,
+           version: version,
+           active: active,
+           inserted_at: inserted_at,
+           updated_at: updated_at
+         }}
 
       _ ->
-        nil
+        {:error, nil}
     end
   end
+
+  defp emit_soul_get_observability(start_mono, bot_id_str, tenant_id, result) do
+    {outcome, soul} =
+      case result do
+        {:missing, _} -> {:missing, nil}
+        {:found, s} -> {:found, s}
+        {:error, _} -> {:error, nil}
+      end
+
+    Observability.soul_get_complete(
+      start_mono,
+      bot_id_str,
+      tenant_id_label(tenant_id),
+      outcome,
+      if(soul, do: soul.version, else: nil)
+    )
+  end
+
+  defp soul_from_query_tag({:found, soul}), do: soul
+  defp soul_from_query_tag(_), do: nil
 
   @doc """
   Create or update a soul configuration.
@@ -157,15 +207,17 @@ defmodule BotArmy.Soul do
   Uses INSERT ... ON CONFLICT to handle upserts.
   """
   @spec upsert(atom() | String.t(), map(), opts :: [tenant_id: String.t(), repo: module()]) ::
-          {:ok, %__MODULE__{}} | {:error, Ecto.Changeset.t()}
+          {:ok, %__MODULE__{}} | {:error, term()}
   def upsert(bot_id, config, opts \\ []) do
+    start_mono = System.monotonic_time()
+
     bot_id_str = Atom.to_string(bot_id) |> String.replace_prefix("bot_army_", "")
 
     tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
     repo = Keyword.get(opts, :repo, BotArmyRuntime.Ecto.Repo)
 
-    # Get current soul to determine version
-    current = get(bot_id, tenant_id: tenant_id, repo: repo)
+    # Get current soul to determine version (suppress duplicate soul_get telemetry)
+    current = get(bot_id, tenant_id: tenant_id, repo: repo, telemetry: false)
 
     version =
       case current do
@@ -184,34 +236,59 @@ defmodule BotArmy.Soul do
     RETURNING *
     """
 
-    case repo.query(query, [
-           bot_id_str,
-           tenant_id,
-           Jason.encode!(config),
-           version
-         ]) do
-      {:ok,
-       %Postgrex.Result{
-         rows: [[id, bot_id, tenant_id, config, version, active, inserted_at, updated_at]]
-       }} ->
+    upsert_result =
+      case repo.query(query, [
+             bot_id_str,
+             tenant_id,
+             Jason.encode!(config),
+             version
+           ]) do
         {:ok,
-         %__MODULE__{
-           id: id,
-           bot_id: bot_id,
-           tenant_id: tenant_id,
-           config: config,
-           version: version,
-           active: active,
-           inserted_at: inserted_at,
-           updated_at: updated_at
-         }}
+         %Postgrex.Result{
+           rows: [
+             [id, row_bot_id, row_tenant_id, config, version, active, inserted_at, updated_at]
+           ]
+         }} ->
+          {:ok,
+           %__MODULE__{
+             id: id,
+             bot_id: row_bot_id,
+             tenant_id: row_tenant_id,
+             config: config,
+             version: version,
+             active: active,
+             inserted_at: inserted_at,
+             updated_at: updated_at
+           }}
 
-      {:ok, %Postgrex.Result{rows: []}} ->
-        {:error, "No rows returned from upsert"}
+        {:ok, %Postgrex.Result{rows: []}} ->
+          {:error, "No rows returned from upsert"}
 
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
+
+    case upsert_result do
+      {:ok, soul} ->
+        Observability.soul_upsert_complete(
+          start_mono,
+          bot_id_str,
+          tenant_id_label(tenant_id),
+          :ok,
+          soul.version
+        )
+
+      {:error, _} ->
+        Observability.soul_upsert_complete(
+          start_mono,
+          bot_id_str,
+          tenant_id_label(tenant_id),
+          :error,
+          nil
+        )
     end
+
+    upsert_result
   end
 
   @doc """
@@ -222,8 +299,18 @@ defmodule BotArmy.Soul do
   @spec publish(atom() | String.t(), opts :: [tenant_id: String.t(), repo: module()]) ::
           :ok | {:error, String.t()}
   def publish(bot_id, opts \\ []) do
+    bot_id_str = Atom.to_string(bot_id) |> String.replace_prefix("bot_army_", "")
+    tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
+
     case get(bot_id, opts) do
       nil ->
+        Observability.soul_publish(
+          bot_id_str,
+          tenant_id_label(tenant_id),
+          :error,
+          "no_soul_row"
+        )
+
         {:error, "No soul found for #{bot_id}"}
 
       soul ->
@@ -235,8 +322,37 @@ defmodule BotArmy.Soul do
           timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
         }
 
-        BotArmyRuntime.NATS.Publisher.publish("bot.army.soul.#{soul.bot_id}", payload)
-        :ok
+        subject = "bot.army.soul.#{soul.bot_id}"
+
+        case Publisher.publish(subject, payload) do
+          {:ok, _} ->
+            Observability.soul_publish(
+              bot_id_str,
+              tenant_id_label(tenant_id),
+              :ok,
+              nil
+            )
+
+            :ok
+
+          {:error, reason} ->
+            msg = error_message(reason)
+
+            Observability.soul_publish(
+              bot_id_str,
+              tenant_id_label(tenant_id),
+              :error,
+              msg
+            )
+
+            {:error, msg}
+        end
     end
   end
+
+  defp tenant_id_label(tenant_id) when is_binary(tenant_id), do: tenant_id
+  defp tenant_id_label(other), do: inspect(other)
+
+  defp error_message(%_{} = e), do: Exception.message(e)
+  defp error_message(other), do: inspect(other)
 end
