@@ -138,5 +138,22 @@ defmodule BotArmyRuntime.GtdPollAllocatorTest do
       assert length(result) == 1
       assert hd(result)["item_id"] == "00000000-0000-0000-0000-000000000001"
     end
+
+    test "handles arbitrary item types like theme/vibe/mechanic" do
+      snapshot = %{
+        "theme" => ["cyberpunk-resistance", "space-opera-crew"],
+        "vibe" => ["dark-and-gritty", "hopeful-and-heroic"],
+        "mechanic" => ["quest-bounties-and-fame"]
+      }
+
+      result = GtdPollAllocator.allocate(snapshot, :synapse, 3)
+
+      total_votes = Enum.reduce(result, 0, fn alloc, acc -> acc + alloc["votes"] end)
+      assert total_votes <= 3
+      assert length(result) >= 2
+
+      types = Enum.map(result, & &1["item_type"]) |> Enum.uniq()
+      assert "theme" in types or "vibe" in types or "mechanic" in types
+    end
   end
 end

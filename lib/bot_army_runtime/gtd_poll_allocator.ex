@@ -43,11 +43,11 @@ defmodule BotArmyRuntime.GtdPollAllocator do
   def allocate(_snapshot, _profile, _budget), do: []
 
   defp flatten_snapshot(snapshot) do
-    ["task", "project", "goal"]
-    |> Enum.flat_map(fn type ->
-      case Map.get(snapshot, type) do
+    snapshot
+    |> Enum.flat_map(fn {type, items} ->
+      case items do
         items when is_list(items) ->
-          Enum.map(items, fn id -> %{type: type, id: to_string(id)} end)
+          Enum.map(items, fn id -> %{type: to_string(type), id: to_string(id)} end)
 
         _ ->
           []
@@ -68,7 +68,7 @@ defmodule BotArmyRuntime.GtdPollAllocator do
       "task" -> 1.0 - min(count, 20) * 0.02
       "project" -> 0.7
       "goal" -> 0.5
-      _ -> 0.3
+      _ -> 0.6
     end
   end
 
@@ -77,7 +77,7 @@ defmodule BotArmyRuntime.GtdPollAllocator do
       "task" -> 0.8
       "project" -> 0.85
       "goal" -> 0.75
-      _ -> 0.3
+      _ -> 0.6
     end
   end
 
