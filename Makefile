@@ -1,4 +1,4 @@
-.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all
+.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all push-and-publish
 
 help:
 	@echo "Bot Army Runtime development tasks"
@@ -100,3 +100,7 @@ health-check:
 	done
 
 .DEFAULT_GOAL := help
+
+
+push-and-publish:
+	@git push && $(MAKE) publish-release
