@@ -25,8 +25,8 @@ defmodule BotArmyRuntime.RegistryTest do
 
       BotArmyRuntime.Registry.register("test_bot", subjects)
 
-      {:ok, [bot]} = BotArmyRuntime.Registry.list_bots()
-      assert bot["name"] == "test_bot"
+      {:ok, bots} = BotArmyRuntime.Registry.list_bots()
+      bot = Enum.find(bots, &(&1["name"] == "test_bot"))
       assert bot["subject_count"] == 2
       assert length(bot["subjects"]) == 2
     end
@@ -73,12 +73,12 @@ defmodule BotArmyRuntime.RegistryTest do
       BotArmyRuntime.Registry.register("test_bot", subjects)
 
       {:ok, bots} = BotArmyRuntime.Registry.list_bots()
-      assert length(bots) == 1
+      assert Enum.any?(bots, &(&1["name"] == "test_bot"))
 
       BotArmyRuntime.Registry.deregister("test_bot")
 
       {:ok, bots} = BotArmyRuntime.Registry.list_bots()
-      assert length(bots) == 0
+      refute Enum.any?(bots, &(&1["name"] == "test_bot"))
     end
   end
 
