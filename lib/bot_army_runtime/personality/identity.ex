@@ -18,6 +18,7 @@ defmodule BotArmyRuntime.Personality.Identity do
     sre_terminal: %{symbol: "▸", name: "Casey"},
     calendar_bot: %{symbol: "◷", name: "Alex"},
     wakeword_bot: %{symbol: "◎", name: "Sam"},
+    rpg_bot: %{symbol: "⚔", name: "Vex"},
     trading_bot: %{symbol: "●", name: nil}
   }
 

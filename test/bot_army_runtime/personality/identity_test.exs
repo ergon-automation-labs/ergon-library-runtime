@@ -106,7 +106,7 @@ defmodule BotArmyRuntime.Personality.IdentityTest do
       bots = Identity.all_bots()
 
       assert is_map(bots)
-      assert map_size(bots) == 10
+      assert map_size(bots) == 11
       assert bots[:gtd_bot] == %{symbol: "◉", name: "Morgan"}
       assert bots[:fitness_bot] == %{symbol: "▲", name: "Jordan"}
     end
