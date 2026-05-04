@@ -6,13 +6,14 @@ defmodule BotArmyRuntime.Intent.Publisher do
   ThresholdModel decides the bot should act. It:
 
   1. Publishes an intent envelope on the intent subject
-  2. Subscribes to veto responses for a configurable window (default 2s)
-  3. If no veto is received, returns `{:proceed, intent_id}`
+  2. Subscribes to veto/endorsement responses for a configurable window (default 2s)
+  3. If no veto is received, returns `{:proceed, intent_id, endorsements}`
   4. If a veto is received, returns `{:vetoed, vetoing_bot, reason}`
+  5. Endorsements are collected and returned — they don't block but signal
+     support from other bots
 
   ## Usage
 
-      # From a heartbeat handler:
       alias BotArmyRuntime.Intent.Publisher
 
       case Publisher.publish_intent("gtd", "nudge", %{
@@ -20,9 +21,10 @@ defmodule BotArmyRuntime.Intent.Publisher do
         context_snapshot: %{last_activity: ~N[2026-05-03 10:00:00]},
         random_roll: %{notation: "1d20", total: 14}
       }) do
-        {:proceed, intent_id} ->
-          # No veto received — go ahead and nudge
+        {:proceed, intent_id, endorsements} ->
+          # No veto — go ahead. endorsements lists who supported this.
           BotArmyGTD.Nudge.send(user_id, task_id)
+          Logger.info("Endorsed by: \#{inspect(endorsements)}")
 
         {:vetoed, vetoing_bot, reason} ->
           Logger.info("Nudge vetoed by \#{vetoing_bot}: \#{reason}")
@@ -43,12 +45,20 @@ defmodule BotArmyRuntime.Intent.Publisher do
         "correlation_id" => intent_correlation_id
       }
 
+  Or an endorsement:
+
+      %{
+        "endorsement" => true,
+        "endorsing_bot" => "synapse",
+        "correlation_id" => intent_correlation_id
+      }
+
   ## Configuration
 
       config :bot_army_runtime, :intent,
-        veto_timeout_ms: 2_000,          # How long to wait for vetoes
-        veto_queue_group: "intent_veto",  # NATS queue group for veto subscribers
-        enabled: true                     # Enable/disable intent publishing
+        veto_timeout_ms: 2_000,
+        veto_queue_group: "intent_veto",
+        enabled: true
   """
 
   require Logger
@@ -61,9 +71,12 @@ defmodule BotArmyRuntime.Intent.Publisher do
   @doc """
   Publish an intent and wait for potential vetoes.
 
-  Returns `{:proceed, intent_id}` if no veto within the window,
+  Returns `{:proceed, intent_id, endorsements}` if no veto within the window,
   `{:vetoed, vetoing_bot, reason}` if a veto arrives, or
   `{:error, reason}` on failure.
+
+  Endorsements is a list of `{endorsing_bot, correlation_id}` tuples from
+  bots that signaled support during the window.
 
   Options:
     - `:veto_timeout_ms` — override default veto window (default 2000ms)
@@ -73,7 +86,9 @@ defmodule BotArmyRuntime.Intent.Publisher do
     - `:random_roll` — map from bridge.random.roll result
   """
   @spec publish_intent(String.t(), String.t(), map(), keyword()) ::
-          {:proceed, String.t()} | {:vetoed, String.t(), String.t()} | {:error, term()}
+          {:proceed, String.t(), [{String.t(), String.t()}]}
+          | {:vetoed, String.t(), String.t()}
+          | {:error, term()}
   def publish_intent(bot_name, action, metadata \\ %{}, opts \\ []) do
     unless enabled?(), do: {:error, :disabled}
 
@@ -96,7 +111,7 @@ defmodule BotArmyRuntime.Intent.Publisher do
         )
 
         if Keyword.get(opts, :skip_veto, false) do
-          {:proceed, intent_id}
+          {:proceed, intent_id, []}
         else
           wait_for_vetoes(intent_id, veto_subj, opts)
         end
@@ -148,9 +163,11 @@ defmodule BotArmyRuntime.Intent.Publisher do
   end
 
   @doc """
-  Publish an intent endorsement (non-blocking, informational).
+  Publish an intent endorsement (non-blocking, signals support).
 
-  A bot can endorse an intent to signal support without vetoing.
+  A bot can endorse an intent to signal support. Endorsements are collected
+  by the publisher and returned to the acting bot, allowing it to weigh
+  support vs. silence when deciding how to act.
   """
   @spec publish_endorsement(String.t(), String.t(), String.t(), String.t()) ::
           {:ok, String.t()} | {:error, term()}
@@ -193,36 +210,20 @@ defmodule BotArmyRuntime.Intent.Publisher do
 
     case get_connection() do
       {:ok, conn} ->
-        # Subscribe to veto responses, wait for the window, then unsubscribe
         :ok = Gnat.sub(conn, self(), veto_subj)
 
-        result =
-          receive do
-            {:msg, %{body: body}} ->
-              case Jason.decode(body) do
-                {:ok, %{"veto" => true, "vetoing_bot" => vetoing_bot, "reason" => reason}} ->
-                  Logger.info("[Intent] Vetoed by #{vetoing_bot}",
-                    intent_id: intent_id,
-                    reason: reason
-                  )
-
-                  {:vetoed, vetoing_bot, reason}
-
-                {:ok, %{"endorsement" => true}} ->
-                  # Endorsement doesn't block — keep waiting
-                  wait_for_remaining_vetoes(intent_id, veto_subj, conn, timeout)
-              end
-          after
-            timeout ->
-              Logger.debug("[Intent] No veto received, proceeding",
-                intent_id: intent_id
-              )
-
-              {:proceed, intent_id}
-          end
+        {result, endorsements} =
+          collect_responses(intent_id, veto_subj, conn, timeout, [])
 
         Gnat.unsub(conn, veto_subj)
-        result
+
+        case result do
+          :vetoed ->
+            result
+
+          :proceed ->
+            {:proceed, intent_id, endorsements}
+        end
 
       {:error, reason} ->
         Logger.warning(
@@ -231,24 +232,39 @@ defmodule BotArmyRuntime.Intent.Publisher do
           reason: inspect(reason)
         )
 
-        {:proceed, intent_id}
+        {:proceed, intent_id, []}
     end
   end
 
-  defp wait_for_remaining_vetoes(intent_id, veto_subj, conn, remaining_ms) do
+  defp collect_responses(intent_id, veto_subj, conn, remaining_ms, endorsements) do
+    start_time = System.monotonic_time(:millisecond)
+
     receive do
       {:msg, %{body: body}} ->
         case Jason.decode(body) do
           {:ok, %{"veto" => true, "vetoing_bot" => vetoing_bot, "reason" => reason}} ->
-            Gnat.unsub(conn, veto_subj)
-            {:vetoed, vetoing_bot, reason}
+            Logger.info("[Intent] Vetoed by #{vetoing_bot}",
+              intent_id: intent_id,
+              reason: reason
+            )
 
-          {:ok, %{"endorsement" => true}} ->
-            wait_for_remaining_vetoes(intent_id, veto_subj, conn, remaining_ms)
+            {{:vetoed, vetoing_bot, reason}, endorsements}
+
+          {:ok, %{"endorsement" => true, "endorsing_bot" => endorsing_bot}} ->
+            correlation_id = Map.get(Jason.decode!(body), "correlation_id", "")
+            new_endorsements = [{endorsing_bot, correlation_id} | endorsements]
+            elapsed = System.monotonic_time(:millisecond) - start_time
+            remaining = max(0, remaining_ms - elapsed)
+            collect_responses(intent_id, veto_subj, conn, remaining, new_endorsements)
         end
     after
       remaining_ms ->
-        {:proceed, intent_id}
+        Logger.debug("[Intent] Veto window closed",
+          intent_id: intent_id,
+          endorsements: length(endorsements)
+        )
+
+        {{:proceed, intent_id, endorsements}, endorsements}
     end
   end
 
