@@ -6,7 +6,7 @@ defmodule BotArmyRuntimeTest do
 
   describe "BotArmyRuntime" do
     test "has a version" do
-      assert BotArmyRuntime.version() == "0.1.0"
+      assert BotArmyRuntime.version() == "0.12.0"
     end
   end
 

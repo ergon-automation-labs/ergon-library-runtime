@@ -60,5 +60,5 @@ defmodule BotArmyRuntime do
   @doc """
   Returns the version of bot_army_runtime.
   """
-  def version, do: "0.1.0"
+  def version, do: "0.12.0"
 end
