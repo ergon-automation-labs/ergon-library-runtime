@@ -172,7 +172,7 @@ defmodule BotArmyRuntime.Intent.VetoListener do
 
     case get_connection() do
       {:ok, conn} ->
-        :ok = Gnat.sub(conn, self(), wildcard, queue_group: queue_group)
+        {:ok, _sid} = Gnat.sub(conn, self(), wildcard, queue_group: queue_group)
 
         Logger.info("[VetoListener] Subscribed to #{wildcard}",
           queue_group: queue_group
