@@ -125,11 +125,6 @@ defmodule BotArmyRuntime.Health.Responder do
   end
 
   @impl true
-  def handle_cast({:register_subjects, subjects}, state) do
-    {:noreply, %{state | subjects: subjects}}
-  end
-
-  @impl true
   def handle_info({:nats, :disconnected}, state) do
     Logger.warning("[Health] NATS disconnected, scheduling reconnect")
     {:noreply, %{state | connection: nil, health_subscription: nil, subjects_subscription: nil}}
@@ -150,6 +145,11 @@ defmodule BotArmyRuntime.Health.Responder do
   @impl true
   def handle_info(_msg, state) do
     {:noreply, state}
+  end
+
+  @impl true
+  def handle_cast({:register_subjects, subjects}, state) do
+    {:noreply, %{state | subjects: subjects}}
   end
 
   defp compute_overall_status(state) do

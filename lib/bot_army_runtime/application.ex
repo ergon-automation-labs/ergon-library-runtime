@@ -51,7 +51,10 @@ defmodule BotArmyRuntime.Application do
         {BotArmyRuntime.Health.Monitor, []},
 
         # Conversation manager (cross-bot request/response + mailbox)
-        {BotArmyRuntime.NATS.Conversation.Manager, []}
+        {BotArmyRuntime.NATS.Conversation.Manager, []},
+
+        # Dynamic supervisor for per-bot AccumulatedContext processes
+        {DynamicSupervisor, strategy: :one_for_one, name: BotArmyRuntime.DynamicSupervisor}
       ]
       |> maybe_add_metrics_endpoint()
 

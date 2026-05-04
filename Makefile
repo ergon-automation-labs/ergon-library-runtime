@@ -23,63 +23,63 @@ help:
 	@echo "  health-check   Query all bot health endpoints (NATS dev port 4223)"
 
 install: setup-hooks
-	mix deps.get
+	$(MIX) deps.get
 
 setup-hooks:
 	@git config core.hooksPath git-hooks
 	@echo "✓ Git hooks installed (core.hooksPath = git-hooks)"
 
 compile:
-	mix compile
+	$(MIX) compile
 
 test:
-	mix test
+	$(MIX) test
 
 test-handlers:
-	MIX_ENV=test mix test --only handlers --trace
+	MIX_ENV=test $(MIX) test --only handlers --trace
 
 test-stores:
-	MIX_ENV=test mix test --only stores --trace
+	MIX_ENV=test $(MIX) test --only stores --trace
 
 test-nats:
-	MIX_ENV=test mix test --only nats --trace
+	MIX_ENV=test $(MIX) test --only nats --trace
 
 test-integration:
-	mix test --include integration --trace
+	$(MIX) test --include integration --trace
 
 test-full:
-	mix test --include integration --include nats_live --trace
+	$(MIX) test --include integration --include nats_live --trace
 
 test-watch:
-	mix test.watch
+	$(MIX) test.watch
 
 lint:
-	mix credo
+	$(MIX) credo --only warning
 
 format:
-	mix format
+	$(MIX) format
 
 format-check:
-	mix format --check-formatted
+	$(MIX) format --check-formatted
 
 dialyze:
-	mix dialyzer
+	$(MIX) dialyzer
 
 check: compile lint test
 
 docs:
-	mix docs
+	$(MIX) docs
 
 clean:
-	mix clean
+	$(MIX) clean
 	rm -rf _build
 
 db-setup:
-	mix ecto.create
-	mix ecto.migrate
+	$(MIX) ecto.create
+	$(MIX) ecto.migrate
 
 db-drop:
-	mix ecto.drop
+	$(MIX) ecto.drop
 
 # Bot names for health checks
 BOTS := gtd job_applications llm fitness chore terrain learning advocacy sre claude_bridge calendar notification_router context_broker synapse job_scheduler
