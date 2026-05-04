@@ -219,22 +219,15 @@ defmodule BotArmyRuntime.Intent.VetoListener do
             intent_id: Map.get(envelope, "intent_id", "")
           }
 
-          case Publisher.publish_veto(target_bot, action, state.bot_name, reason, correlation_id) do
-            {:ok, _} ->
-              Logger.info("[VetoListener] Vetoed #{target_bot}.#{action}: #{reason}",
-                bot_name: state.bot_name,
-                target_bot: target_bot,
-                action: action
-              )
+          Logger.info("[VetoListener] Vetoed #{target_bot}.#{action}: #{reason}",
+            bot_name: state.bot_name,
+            target_bot: target_bot,
+            action: action
+          )
 
-              publish_veto_event(log_entry)
-              new_log = [log_entry | Enum.take(state.veto_log, state.log_size - 1)]
-              {:noreply, %{state | veto_log: new_log}}
-
-            {:error, err_reason} ->
-              Logger.warning("[VetoListener] Veto publish failed: #{inspect(err_reason)}")
-              {:noreply, state}
-          end
+          publish_veto_event(log_entry)
+          new_log = [log_entry | Enum.take(state.veto_log, state.log_size - 1)]
+          {:noreply, %{state | veto_log: new_log}}
         else
           {:noreply, state}
         end
