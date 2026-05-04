@@ -125,4 +125,33 @@ defmodule BotArmyRuntime.Intent.VetoListenerTest do
       assert action == "nudge"
     end
   end
+
+  describe "veto audit log" do
+    test "veto event subject follows convention" do
+      event_subject = "events.bot_army.intent.vetoed"
+      assert String.starts_with?(event_subject, "events.bot_army.")
+    end
+
+    test "log entry contains required fields" do
+      entry = %{
+        vetoed_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+        vetoing_bot: "fitness",
+        target_bot: "gtd",
+        action: "nudge",
+        reason: "no recent workout activity",
+        rule: "gtd.nudge +custom",
+        correlation_id: "abc-123",
+        intent_id: "def-456"
+      }
+
+      assert Map.has_key?(entry, :vetoed_at)
+      assert Map.has_key?(entry, :vetoing_bot)
+      assert Map.has_key?(entry, :target_bot)
+      assert Map.has_key?(entry, :action)
+      assert Map.has_key?(entry, :reason)
+      assert Map.has_key?(entry, :rule)
+      assert Map.has_key?(entry, :correlation_id)
+      assert Map.has_key?(entry, :intent_id)
+    end
+  end
 end

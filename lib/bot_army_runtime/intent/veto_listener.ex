@@ -9,26 +9,31 @@ defmodule BotArmyRuntime.Intent.VetoListener do
 
   ## Veto Rules
 
-  A veto rule is a function `(intent_envelope -> boolean)` or a keyword list
-  of built-in matchers:
+  A veto rule is a keyword list of built-in matchers:
 
       [
         bot: "gtd",           # Only match intents from a specific bot
         action: "nudge",      # Only match a specific action
+        reason: "...",        # Static reason string or fn(envelope) -> string
         custom: fn env -> ... # Arbitrary predicate on the envelope
       ]
 
   When multiple keys are provided, all must match (AND logic). When `custom`
   is provided, it receives the decoded envelope map and returns `true` to veto.
 
+  ## Audit Log
+
+  Every veto is recorded in an in-memory ring buffer (last 100 entries) and
+  published as an event on `events.bot_army.intent.vetoed` so Synapse and
+  other surfaces can display the deliberation. A request/reply subject
+  `bot_army.<bot_name>.intent.veto_log` returns the full history.
+
   ## Usage
 
   In your bot's application.ex:
 
       veto_rules = [
-        # Veto GTD nudge intents when user has no recent workouts
         [bot: "gtd", action: "nudge", custom: &BotArmyFitness.VetoRules.veto_stale_nudge/1],
-        # Veto any remind intent
         [bot: "gtd", action: "remind"]
       ]
 
@@ -41,7 +46,8 @@ defmodule BotArmyRuntime.Intent.VetoListener do
 
       config :bot_army_runtime, :veto_listener,
         subscribe_timeout: 5_000,
-        queue_group: "veto_listener"
+        queue_group: "veto_listener",
+        log_size: 100
   """
 
   use GenServer
@@ -49,9 +55,10 @@ defmodule BotArmyRuntime.Intent.VetoListener do
   require Logger
 
   alias BotArmyRuntime.Intent.Schema
-  alias BotArmyRuntime.Intent.Publisher
+  alias BotArmyRuntime.NATS.Publisher
 
   @default_queue_group "veto_listener"
+  @default_log_size 100
 
   @doc """
   Start the VetoListener with a list of veto rules.
@@ -60,6 +67,7 @@ defmodule BotArmyRuntime.Intent.VetoListener do
     - `:rules` — list of veto rules (required)
     - `:bot_name` — name of the bot running this listener (for logging and veto attribution)
     - `:name` — GenServer name (default: `__MODULE__`)
+    - `:log_size` — max veto log entries to retain (default: 100)
   """
   def start_link(opts) do
     name = Keyword.get(opts, :name, __MODULE__)
@@ -82,6 +90,14 @@ defmodule BotArmyRuntime.Intent.VetoListener do
     GenServer.call(server, :get_rules)
   end
 
+  @doc """
+  Get the veto audit log (most recent first).
+  """
+  @spec get_veto_log(GenServer.server()) :: [map()]
+  def get_veto_log(server \\ __MODULE__) do
+    GenServer.call(server, :get_veto_log)
+  end
+
   # ───────────────────────────────────────────────────────────────────────────
   # GenServer Callbacks
   # ───────────────────────────────────────────────────────────────────────────
@@ -90,11 +106,14 @@ defmodule BotArmyRuntime.Intent.VetoListener do
   def init(opts) do
     rules = Keyword.get(opts, :rules, [])
     bot_name = Keyword.get(opts, :bot_name, "unknown")
+    log_size = Keyword.get(opts, :log_size, log_size())
 
     state = %{
       rules: rules,
       bot_name: bot_name,
-      subscription_ref: nil
+      subscription_ref: nil,
+      veto_log: [],
+      log_size: log_size
     }
 
     send(self(), :subscribe)
@@ -109,6 +128,11 @@ defmodule BotArmyRuntime.Intent.VetoListener do
   @impl true
   def handle_call(:get_rules, _from, state) do
     {:reply, state.rules, state}
+  end
+
+  @impl true
+  def handle_call(:get_veto_log, _from, state) do
+    {:reply, Enum.reverse(state.veto_log), state}
   end
 
   @impl true
@@ -149,13 +173,12 @@ defmodule BotArmyRuntime.Intent.VetoListener do
     case get_connection() do
       {:ok, conn} ->
         :ok = Gnat.sub(conn, self(), wildcard, queue_group: queue_group)
-        ref = make_ref()
 
         Logger.info("[VetoListener] Subscribed to #{wildcard}",
           queue_group: queue_group
         )
 
-        {:ok, ref}
+        {:ok, make_ref()}
 
       {:error, reason} ->
         {:error, reason}
@@ -183,6 +206,18 @@ defmodule BotArmyRuntime.Intent.VetoListener do
           rule = hd(matching_rules)
           reason = build_veto_reason(rule, envelope)
           correlation_id = Map.get(envelope, "correlation_id", "")
+          matched_rule_desc = describe_rule(rule)
+
+          log_entry = %{
+            vetoed_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+            vetoing_bot: state.bot_name,
+            target_bot: target_bot,
+            action: action,
+            reason: reason,
+            rule: matched_rule_desc,
+            correlation_id: correlation_id,
+            intent_id: Map.get(envelope, "intent_id", "")
+          }
 
           case Publisher.publish_veto(target_bot, action, state.bot_name, reason, correlation_id) do
             {:ok, _} ->
@@ -192,7 +227,9 @@ defmodule BotArmyRuntime.Intent.VetoListener do
                 action: action
               )
 
-              {:noreply, state}
+              publish_veto_event(log_entry)
+              new_log = [log_entry | Enum.take(state.veto_log, state.log_size - 1)]
+              {:noreply, %{state | veto_log: new_log}}
 
             {:error, err_reason} ->
               Logger.warning("[VetoListener] Veto publish failed: #{inspect(err_reason)}")
@@ -206,6 +243,17 @@ defmodule BotArmyRuntime.Intent.VetoListener do
         Logger.debug("[VetoListener] Skipping unparseable subject: #{subject}")
         {:noreply, state}
     end
+  end
+
+  defp publish_veto_event(log_entry) do
+    Publisher.publish("events.bot_army.intent.vetoed", log_entry)
+  end
+
+  defp describe_rule(rule) do
+    bot = Keyword.get(rule, :bot, "*")
+    action = Keyword.get(rule, :action, "*")
+    custom = Keyword.get(rule, :custom, nil)
+    "#{bot}.#{action}#{if custom, do: " +custom", else: ""}"
   end
 
   @doc false
@@ -247,6 +295,11 @@ defmodule BotArmyRuntime.Intent.VetoListener do
   defp queue_group do
     config = Application.get_env(:bot_army_runtime, :veto_listener, [])
     Keyword.get(config, :queue_group, @default_queue_group)
+  end
+
+  defp log_size do
+    config = Application.get_env(:bot_army_runtime, :veto_listener, [])
+    Keyword.get(config, :log_size, @default_log_size)
   end
 
   defp get_connection do
