@@ -24,6 +24,14 @@ config :bot_army_runtime, :nats,
 # NATS connection timeout for GenServer calls
 config :bot_army_runtime, :nats_connection_timeout, 5000
 
+# Defer handler: when intent is deferred, start an LLM conversation
+# to compose a softer message instead of doing nothing
+config :bot_army_runtime, :defer_handler,
+  enabled: true,
+  min_interval_ms: 30 * 60 * 1000,
+  timeout_ms: 15_000,
+  default_llm_intent: "classify"
+
 # Metrics endpoint port (matches Prometheus scrape config)
 config :bot_army_runtime,
        :metrics_port,

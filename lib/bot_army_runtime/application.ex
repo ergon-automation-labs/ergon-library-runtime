@@ -41,6 +41,9 @@ defmodule BotArmyRuntime.Application do
         # NATS message deduplication (ETS sliding window)
         {BotArmyRuntime.NATS.Dedup, []},
 
+        # Defer rate limiter (ETS-based, prevents spamming LLM on repeated defers)
+        {BotArmyRuntime.Intent.DeferRateLimiter, []},
+
         # NATS circuit breaker (per-key failure tracking for resilience)
         {BotArmyRuntime.NATS.CircuitBreaker, []},
 
