@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.9.2">
+    <meta name="project" content="bot_army_runtime v0.9.9">
 
 
-    <title>BotArmy.Soul — bot_army_runtime v0.9.2</title>
+    <title>BotArmy.Soul — bot_army_runtime v0.9.9</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-327657A3.js"></script>
+    <script defer src="dist/sidebar_items-4E931FBF.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.9.2
+          v0.9.9
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmy.<wbr>Soul</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.9)</small>
 
     </h1>
 
@@ -131,13 +131,15 @@ priorities, and refusal rules. Stored as JSONB in PostgreSQL.</p><h2 id="module-
   inserted_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );</code></pre><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><pre><code class="makeup elixir" translate="no"><span class="c1"># Get the current soul for a bot</span><span class="w">
-</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="6991626985-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="6991626985-1">)</span><span class="w">
+</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="5046225082-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="5046225082-1">)</span><span class="w">
 
 </span><span class="c1"># Get soul for a specific tenant</span><span class="w">
-</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="6991626985-2">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid-here&quot;</span><span class="p" data-group-id="6991626985-2">)</span><span class="w">
+</span><span class="n">soul</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="5046225082-2">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid-here&quot;</span><span class="p" data-group-id="5046225082-2">)</span><span class="w">
 
-</span><span class="c1"># Update soul config</span><span class="w">
-</span><span class="p" data-group-id="6991626985-3">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="bp">_</span><span class="p" data-group-id="6991626985-3">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">update</span><span class="p" data-group-id="6991626985-4">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="6991626985-5">%{</span><span class="ss">tone</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;more sarcastic&quot;</span><span class="p" data-group-id="6991626985-5">}</span><span class="p" data-group-id="6991626985-4">)</span></code></pre>
+</span><span class="c1"># Upsert soul config (persists JSONB row per bot_id + tenant_id)</span><span class="w">
+</span><span class="p" data-group-id="5046225082-3">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="bp">_</span><span class="p" data-group-id="5046225082-3">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">upsert</span><span class="p" data-group-id="5046225082-4">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="5046225082-5">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="5046225082-6">%{</span><span class="n">...</span><span class="p" data-group-id="5046225082-6">}</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tone&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="s">&quot;more sarcastic&quot;</span><span class="p" data-group-id="5046225082-5">}</span><span class="p" data-group-id="5046225082-4">)</span></code></pre><h2 id="module-observability" class="section-heading"><a href="#module-observability" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Observability</span></h2><p>Loads, upserts, and NATS publishes emit <code class="inline">[:bot_army, :personality, :soul, :get | :upsert | :publish]</code> telemetry
+(see <a href="BotArmyRuntime.Personality.Observability.html"><code class="inline">BotArmyRuntime.Personality.Observability</code></a>) and structured logs. Pass <code class="inline">telemetry: false</code>
+to <a href="#get/2"><code class="inline">get/2</code></a> only when probing version inside <a href="#upsert/3"><code class="inline">upsert/3</code></a> to avoid duplicate load metrics.</p><p>PromEx scrapes counters and latency histograms via <a href="BotArmyRuntime.Metrics.PromExPlugin.html"><code class="inline">BotArmyRuntime.Metrics.PromExPlugin</code></a>.</p>
     </section>
 
 </div>
@@ -245,7 +247,10 @@ priorities, and refusal rules. Stored as JSONB in PostgreSQL.</p><h2 id="module-
 
       <div class="specs">
 
-          <pre translate="no"><span class="attribute">@spec</span> get(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>() | <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), opts :: [tenant_id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), repo: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">module</a>()]) ::
+          <pre translate="no"><span class="attribute">@spec</span> get(
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>() | <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  opts :: [tenant_id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), repo: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">module</a>(), telemetry: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>()]
+) ::
   %BotArmy.Soul{
     __meta__: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
     active: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
@@ -261,11 +266,11 @@ priorities, and refusal rules. Stored as JSONB in PostgreSQL.</p><h2 id="module-
 
       </div>
 
-<p>Get the current soul for a bot.</p><p>Returns the active soul with the highest version for the given bot and tenant.</p><h2 id="get/2-examples" class="section-heading"><a href="#get/2-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="0809327947-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="0809327947-1">)</span><span class="w">
-</span><span class="p" data-group-id="0809327947-2">%</span><span class="nc" data-group-id="0809327947-2">BotArmy.Soul</span><span class="p" data-group-id="0809327947-2">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="0809327947-3">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="0809327947-4">%{</span><span class="n">...</span><span class="p" data-group-id="0809327947-4">}</span><span class="p" data-group-id="0809327947-3">}</span><span class="p" data-group-id="0809327947-2">}</span><span class="w">
+<p>Get the current soul for a bot.</p><p>Returns the active soul with the highest version for the given bot and tenant.</p><h2 id="get/2-examples" class="section-heading"><a href="#get/2-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="2307285645-1">(</span><span class="ss">:gtd_bot</span><span class="p" data-group-id="2307285645-1">)</span><span class="w">
+</span><span class="p" data-group-id="2307285645-2">%</span><span class="nc" data-group-id="2307285645-2">BotArmy.Soul</span><span class="p" data-group-id="2307285645-2">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="2307285645-3">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="2307285645-4">%{</span><span class="n">...</span><span class="p" data-group-id="2307285645-4">}</span><span class="p" data-group-id="2307285645-3">}</span><span class="p" data-group-id="2307285645-2">}</span><span class="w">
 
-</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="0809327947-5">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid&quot;</span><span class="p" data-group-id="0809327947-5">)</span><span class="w">
-</span><span class="p" data-group-id="0809327947-6">%</span><span class="nc" data-group-id="0809327947-6">BotArmy.Soul</span><span class="p" data-group-id="0809327947-6">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="0809327947-7">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="0809327947-8">%{</span><span class="n">...</span><span class="p" data-group-id="0809327947-8">}</span><span class="p" data-group-id="0809327947-7">}</span><span class="p" data-group-id="0809327947-6">}</span></code></pre>
+</span><span class="gp unselectable">iex&gt; </span><span class="nc">BotArmy.Soul</span><span class="o">.</span><span class="n">get</span><span class="p" data-group-id="2307285645-5">(</span><span class="ss">:gtd_bot</span><span class="p">,</span><span class="w"> </span><span class="ss">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uuid&quot;</span><span class="p" data-group-id="2307285645-5">)</span><span class="w">
+</span><span class="p" data-group-id="2307285645-6">%</span><span class="nc" data-group-id="2307285645-6">BotArmy.Soul</span><span class="p" data-group-id="2307285645-6">{</span><span class="ss">config</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="2307285645-7">%{</span><span class="s">&quot;identity&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="2307285645-8">%{</span><span class="n">...</span><span class="p" data-group-id="2307285645-8">}</span><span class="p" data-group-id="2307285645-7">}</span><span class="p" data-group-id="2307285645-6">}</span></code></pre>
   </section>
 </section>
 <section class="detail" id="publish/2">
@@ -331,7 +336,7 @@ priorities, and refusal rules. Stored as JSONB in PostgreSQL.</p><h2 id="module-
      updated_at: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
      version: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
    }}
-  | {:error, <a href="https://hexdocs.pm/ecto/3.13.5/Ecto.Changeset.html#t:t/0">Ecto.Changeset.t</a>()}</pre>
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
 
       </div>
 

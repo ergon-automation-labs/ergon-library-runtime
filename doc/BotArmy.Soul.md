@@ -48,9 +48,17 @@ soul = BotArmy.Soul.get(:gtd_bot)
 # Get soul for a specific tenant
 soul = BotArmy.Soul.get(:gtd_bot, tenant_id: "uuid-here")
 
-# Update soul config
-{:ok, _} = BotArmy.Soul.update(:gtd_bot, %{tone: "more sarcastic"})
+# Upsert soul config (persists JSONB row per bot_id + tenant_id)
+{:ok, _} = BotArmy.Soul.upsert(:gtd_bot, %{"identity" => %{...}, "tone" => "more sarcastic"})
 ```
+
+## Observability
+
+Loads, upserts, and NATS publishes emit `[:bot_army, :personality, :soul, :get | :upsert | :publish]` telemetry
+(see `BotArmyRuntime.Personality.Observability`) and structured logs. Pass `telemetry: false`
+to `get/2` only when probing version inside `upsert/3` to avoid duplicate load metrics.
+
+PromEx scrapes counters and latency histograms via `BotArmyRuntime.Metrics.PromExPlugin`.
 
 # `changeset`
 
@@ -59,7 +67,10 @@ Returns a changeset for soul creation/update.
 # `get`
 
 ```elixir
-@spec get(atom() | String.t(), opts :: [tenant_id: String.t(), repo: module()]) ::
+@spec get(
+  atom() | String.t(),
+  opts :: [tenant_id: String.t(), repo: module(), telemetry: boolean()]
+) ::
   %BotArmy.Soul{
     __meta__: term(),
     active: term(),
@@ -117,7 +128,7 @@ Publishes to `bot.army.soul.<bot_id>` with the current soul config.
      updated_at: term(),
      version: term()
    }}
-  | {:error, Ecto.Changeset.t()}
+  | {:error, term()}
 ```
 
 Create or update a soul configuration.

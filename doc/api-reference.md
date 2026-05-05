@@ -1,4 +1,4 @@
-# bot_army_runtime v0.9.2 - API Reference
+# bot_army_runtime v0.9.9 - API Reference
 
 ## Modules
 
@@ -8,6 +8,7 @@
 - [BotArmyRuntime.Application](BotArmyRuntime.Application.md): Supervision tree for BotArmyRuntime.
 - [BotArmyRuntime.Correlation](BotArmyRuntime.Correlation.md): Correlation ID propagation for distributed request tracing.
 - [BotArmyRuntime.Ecto.Repo](BotArmyRuntime.Ecto.Repo.md): Base Ecto Repository for Bot Army services.
+- [BotArmyRuntime.GtdPollAllocator](BotArmyRuntime.GtdPollAllocator.md): Converts a GTD poll snapshot into structured vote allocations.
 - [BotArmyRuntime.Health.Monitor](BotArmyRuntime.Health.Monitor.md): Monitors bot heartbeats and publishes alerts when bots go stale.
 - [BotArmyRuntime.Health.Responder](BotArmyRuntime.Health.Responder.md): Shared health check responder for Bot Army services.
 - [BotArmyRuntime.Logging](BotArmyRuntime.Logging.md): Helper for any bot to record structured activity entries to the GTD daily log.
@@ -27,6 +28,7 @@
 - [BotArmyRuntime.NATS.Reply](BotArmyRuntime.NATS.Reply.md): Standardized response format for NATS request/reply handlers.
 - [BotArmyRuntime.Personality.Formatter](BotArmyRuntime.Personality.Formatter.md): Message formatter with bot personality symbols.
 - [BotArmyRuntime.Personality.Identity](BotArmyRuntime.Personality.Identity.md): Bot Army personality symbols registry.
+- [BotArmyRuntime.Personality.Observability](BotArmyRuntime.Personality.Observability.md): Telemetry and structured logging for soul (tenant DB) and pulse (NATS) paths.
 - [BotArmyRuntime.PromEx](BotArmyRuntime.PromEx.md): PromEx module for Bot Army metrics collection.
 - [BotArmyRuntime.Registry](BotArmyRuntime.Registry.md): In-memory service discovery registry for the Bot Army ecosystem.
 - [BotArmyRuntime.Telemetry](BotArmyRuntime.Telemetry.md): Sets up telemetry handlers for observability across Bot Army services.

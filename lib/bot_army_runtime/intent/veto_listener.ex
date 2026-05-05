@@ -172,13 +172,36 @@ defmodule BotArmyRuntime.Intent.VetoListener do
 
     case get_connection() do
       {:ok, conn} ->
-        {:ok, _sid} = Gnat.sub(conn, self(), wildcard, queue_group: queue_group)
+        case Gnat.sub(conn, self(), wildcard, queue_group: queue_group) do
+          :ok ->
+            Logger.info("[VetoListener] Subscribed to #{wildcard}",
+              queue_group: queue_group
+            )
 
-        Logger.info("[VetoListener] Subscribed to #{wildcard}",
-          queue_group: queue_group
-        )
+            {:ok, make_ref()}
 
-        {:ok, make_ref()}
+          {:ok, sid} ->
+            Logger.info("[VetoListener] Subscribed to #{wildcard}",
+              queue_group: queue_group,
+              sid: inspect(sid)
+            )
+
+            {:ok, sid}
+
+          {:ok, sid, _extra} ->
+            Logger.info("[VetoListener] Subscribed to #{wildcard}",
+              queue_group: queue_group,
+              sid: inspect(sid)
+            )
+
+            {:ok, sid}
+
+          {:error, reason} ->
+            {:error, reason}
+
+          other ->
+            {:error, {:unexpected_subscribe_result, other}}
+        end
 
       {:error, reason} ->
         {:error, reason}

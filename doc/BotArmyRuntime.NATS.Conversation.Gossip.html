@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.9.2">
+    <meta name="project" content="bot_army_runtime v0.9.9">
 
 
-    <title>BotArmyRuntime.NATS.Conversation.Gossip — bot_army_runtime v0.9.2</title>
+    <title>BotArmyRuntime.NATS.Conversation.Gossip — bot_army_runtime v0.9.9</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-327657A3.js"></script>
+    <script defer src="dist/sidebar_items-4E931FBF.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.9.2
+          v0.9.9
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmyRuntime.<wbr>NATS.<wbr>Conversation.<wbr>Gossip</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.9)</small>
 
     </h1>
 
@@ -115,7 +115,7 @@ or conversation protocol.</p><h2 id="module-configuration" class="section-headin
   </span><span class="ss">enabled</span><span class="p">:</span><span class="w"> </span><span class="no">true</span><span class="p">,</span><span class="w">
   </span><span class="ss">probability_per_cycle</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span><span class="w">   </span><span class="c1"># 5% chance per heartbeat</span><span class="w">
   </span><span class="ss">only_when_idle</span><span class="p">:</span><span class="w"> </span><span class="no">true</span><span class="p">,</span><span class="w">          </span><span class="c1"># Skip if bot has pending work</span><span class="w">
-  </span><span class="ss">max_active_gossips</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="w">          </span><span class="c1"># Max concurrent gossip conversations</span></code></pre><h2 id="module-integration" class="section-heading"><a href="#module-integration" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Integration</span></h2><p>Call <code class="inline">Gossip.maybe_gossip/2</code> from your heartbeat cycle:</p><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.NATS.Conversation.Gossip</span><span class="o">.</span><span class="n">maybe_gossip</span><span class="p" data-group-id="5846403572-1">(</span><span class="s">&quot;gtd&quot;</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="5846403572-2">%{</span><span class="ss">idle</span><span class="p">:</span><span class="w"> </span><span class="no">true</span><span class="p">,</span><span class="w"> </span><span class="ss">metric</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;processed 150 events&quot;</span><span class="p" data-group-id="5846403572-2">}</span><span class="p" data-group-id="5846403572-1">)</span></code></pre>
+  </span><span class="ss">max_active_gossips</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="w">          </span><span class="c1"># Max concurrent gossip conversations</span></code></pre><h2 id="module-integration" class="section-heading"><a href="#module-integration" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Integration</span></h2><p>Call <code class="inline">Gossip.maybe_gossip/2</code> from your heartbeat cycle:</p><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.NATS.Conversation.Gossip</span><span class="o">.</span><span class="n">maybe_gossip</span><span class="p" data-group-id="8139995630-1">(</span><span class="s">&quot;gtd&quot;</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="8139995630-2">%{</span><span class="ss">idle</span><span class="p">:</span><span class="w"> </span><span class="no">true</span><span class="p">,</span><span class="w"> </span><span class="ss">metric</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;processed 150 events&quot;</span><span class="p" data-group-id="8139995630-2">}</span><span class="p" data-group-id="8139995630-1">)</span></code></pre>
     </section>
 
 </div>

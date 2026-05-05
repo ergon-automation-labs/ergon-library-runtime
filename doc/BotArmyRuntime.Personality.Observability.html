@@ -8,7 +8,7 @@
     <meta name="project" content="bot_army_runtime v0.9.9">
 
 
-    <title>BotArmyRuntime.Logging — bot_army_runtime v0.9.9</title>
+    <title>BotArmyRuntime.Personality.Observability — bot_army_runtime v0.9.9</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -93,12 +93,12 @@ bot_army_runtime
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">BotArmyRuntime.<wbr>Logging</span> 
+      <span translate="no">BotArmyRuntime.<wbr>Personality.<wbr>Observability</span> 
       <small class="app-vsn" translate="no">(bot_army_runtime v0.9.9)</small>
 
     </h1>
 
-<a href="BotArmyRuntime.Logging.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="BotArmyRuntime.Personality.Observability.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
@@ -109,10 +109,7 @@ bot_army_runtime
 
 
     <section id="moduledoc">
-<p>Helper for any bot to record structured activity entries to the GTD daily log.</p><p>This module provides a simple interface for bots to publish log entries without
-knowing about GTD internals. Entries are published to <code class="inline">gtd.log.create</code> where
-the GTD bot processes them.</p><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.Logging</span><span class="o">.</span><span class="n">record</span><span class="p" data-group-id="5582228435-1">(</span><span class="s">&quot;Task completed successfully&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">source</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;advocacy_bot&quot;</span><span class="p" data-group-id="5582228435-1">)</span><span class="w">
-</span><span class="nc">BotArmyRuntime.Logging</span><span class="o">.</span><span class="n">record</span><span class="p" data-group-id="5582228435-2">(</span><span class="s">&quot;New bill found&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">source</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;advocacy_bot&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">category</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;work&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">tags</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="5582228435-3">[</span><span class="s">&quot;bill&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;federal&quot;</span><span class="p" data-group-id="5582228435-3">]</span><span class="p" data-group-id="5582228435-2">)</span></code></pre><h2 id="module-options" class="section-heading"><a href="#module-options" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Options</span></h2><ul><li><code class="inline">source</code> (required) - Bot or component name (e.g., &quot;advocacy_bot&quot;, &quot;liveview&quot;)</li><li><code class="inline">category</code> - One of: work, personal, health, learning, care, admin, social (default: &quot;personal&quot;)</li><li><code class="inline">task_id</code> - Optional link to a GTD task ID</li><li><code class="inline">tags</code> - List of string tags for categorization</li></ul>
+<p>Telemetry and structured logging for soul (tenant DB) and pulse (NATS) paths.</p><h2 id="module-telemetry-event-names" class="section-heading"><a href="#module-telemetry-event-names" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Telemetry event names</span></h2><p>All use the <code class="inline">[:bot_army, :personality, ...]</code> prefix for PromEx and ad-hoc handlers.</p><table><thead><tr><th style="text-align: left;">Event</th><th style="text-align: left;">Measurements</th><th style="text-align: left;">Metadata</th></tr></thead><tbody><tr><td style="text-align: left;"><code class="inline">[:bot_army, :personality, :soul, :get]</code></td><td style="text-align: left;"><code class="inline">duration</code> (native), <code class="inline">count</code></td><td style="text-align: left;"><code class="inline">outcome</code>, <code class="inline">bot_id</code>, <code class="inline">tenant_id</code>, optional <code class="inline">soul_version</code></td></tr><tr><td style="text-align: left;"><code class="inline">[:bot_army, :personality, :soul, :upsert]</code></td><td style="text-align: left;"><code class="inline">duration</code> (native), <code class="inline">count</code></td><td style="text-align: left;"><code class="inline">outcome</code>, <code class="inline">bot_id</code>, <code class="inline">tenant_id</code>, optional <code class="inline">soul_version</code></td></tr><tr><td style="text-align: left;"><code class="inline">[:bot_army, :personality, :soul, :publish]</code></td><td style="text-align: left;"><code class="inline">count</code></td><td style="text-align: left;"><code class="inline">outcome</code>, <code class="inline">bot_id</code>, <code class="inline">tenant_id</code>, optional <code class="inline">error</code></td></tr><tr><td style="text-align: left;"><code class="inline">[:bot_army, :personality, :pulse, :publish]</code></td><td style="text-align: left;"><code class="inline">count</code></td><td style="text-align: left;"><code class="inline">outcome</code>, <code class="inline">bot_id</code>, <code class="inline">tenant_id</code>, <code class="inline">subject</code>, optional <code class="inline">error</code></td></tr></tbody></table><p>Attach handlers with <a href="https://hexdocs.pm/telemetry/1.3.0/telemetry.html#attach/4"><code class="inline">:telemetry.attach/4</code></a> or scrape via <a href="BotArmyRuntime.Metrics.PromExPlugin.html"><code class="inline">BotArmyRuntime.Metrics.PromExPlugin</code></a>.</p>
     </section>
 
 </div>
@@ -124,18 +121,16 @@ the GTD bot processes them.</p><h2 id="module-usage" class="section-heading"><a 
       </a>
       <span class="text">Summary</span>
     </h2>
-<div class="summary-functions summary">
+<div class="summary-types summary">
   <h3>
-    <a href="#functions">Functions</a>
+    <a href="#types">Types</a>
   </h3>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#record/2" data-no-tooltip="" translate="no">record(body, opts \\ [])</a>
+        <a href="#t:soul_outcome/0" data-no-tooltip="" translate="no">soul_outcome()</a>
 
       </div>
-
-        <div class="summary-synopsis"><p>Record a log entry.</p></div>
 
     </div>
 
@@ -144,25 +139,23 @@ the GTD bot processes them.</p><h2 id="module-usage" class="section-heading"><a 
   </section>
 
 
-  <section id="functions" class="details-list">
+  <section id="types" class="details-list">
     <h2 class="section-heading">
-      <a class="hover-link" href="#functions">
+      <a class="hover-link" href="#types">
         <i class="ri-link-m" aria-hidden="true"></i>
       </a>
-      <span class="text">Functions</span>
+      <span class="text">Types</span>
     </h2>
 
-    <div class="functions-list">
-<section class="detail" id="record/2">
-
-    <span id="record/1"></span>
+    <div class="types-list">
+<section class="detail" id="t:soul_outcome/0">
 
   <div class="detail-header">
-    <a href="#record/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#t:soul_outcome/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">record(body, opts \\ [])</h1>
+      <h1 class="signature" translate="no">soul_outcome()</h1>
 
 
     </div>
@@ -170,7 +163,13 @@ the GTD bot processes them.</p><h2 id="module-usage" class="section-heading"><a 
 
   <section class="docstring">
 
-<p>Record a log entry.</p><p>The <code class="inline">body</code> is required and should be a brief description of what occurred.</p><p>Returns <code class="inline">:ok</code> or <code class="inline">{:error, reason}</code>.</p><h2 id="record/2-options" class="section-heading"><a href="#record/2-options" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Options</span></h2><ul><li><code class="inline">source</code> - Bot or component name (required)</li><li><p><code class="inline">category</code> - work | personal | health | learning | care | admin | social</p></li><li><code class="inline">task_id</code> - Link to a task ID</li><li><code class="inline">tags</code> - List of string tags</li></ul>
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> soul_outcome() :: :found | :missing | :error</pre>
+
+      </div>
+
+
   </section>
 </section>
 

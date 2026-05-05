@@ -5,14 +5,14 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.40.1">
-    <meta name="project" content="bot_army_runtime v0.9.2">
+    <meta name="project" content="bot_army_runtime v0.9.9">
 
 
-    <title>BotArmyRuntime.Correlation — bot_army_runtime v0.9.2</title>
+    <title>BotArmyRuntime.Correlation — bot_army_runtime v0.9.9</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-327657A3.js"></script>
+    <script defer src="dist/sidebar_items-4E931FBF.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -37,7 +37,7 @@
 bot_army_runtime
         </a>
         <div class="sidebar-projectVersion" translate="no">
-          v0.9.2
+          v0.9.9
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ bot_army_runtime
   <div class="heading-with-actions top-heading">
     <h1>
       <span translate="no">BotArmyRuntime.<wbr>Correlation</span> 
-      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.2)</small>
+      <small class="app-vsn" translate="no">(bot_army_runtime v0.9.9)</small>
 
     </h1>
 
@@ -111,12 +111,12 @@ bot_army_runtime
     <section id="moduledoc">
 <p>Correlation ID propagation for distributed request tracing.</p><p>Manages correlation IDs across the bot fleet by storing them in Logger.metadata.
 Each incoming request (from a surface, API, or user action) gets a correlation_id
-that flows through all subsequent NATS messages and appears in all logs.</p><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><p><strong>Entry point (generate on user request):</strong></p><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">put</span><span class="p" data-group-id="2590301968-1">(</span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">generate</span><span class="p" data-group-id="2590301968-2">(</span><span class="p" data-group-id="2590301968-2">)</span><span class="p" data-group-id="2590301968-1">)</span></code></pre><p><strong>Consumer (extract from incoming message):</strong></p><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">extract_from_headers</span><span class="p" data-group-id="2627487172-1">(</span><span class="n">msg</span><span class="o">.</span><span class="n">headers</span><span class="p" data-group-id="2627487172-1">)</span><span class="w">
-</span><span class="o">|&gt;</span><span class="w"> </span><span class="k">case</span><span class="w"> </span><span class="k" data-group-id="2627487172-2">do</span><span class="w">
-  </span><span class="no">nil</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">put</span><span class="p" data-group-id="2627487172-3">(</span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">generate</span><span class="p" data-group-id="2627487172-4">(</span><span class="p" data-group-id="2627487172-4">)</span><span class="p" data-group-id="2627487172-3">)</span><span class="w">
-  </span><span class="n">id</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">put</span><span class="p" data-group-id="2627487172-5">(</span><span class="n">id</span><span class="p" data-group-id="2627487172-5">)</span><span class="w">
-</span><span class="k" data-group-id="2627487172-2">end</span></code></pre><p><strong>Publisher (auto-injected):</strong></p><pre><code class="makeup elixir" translate="no"><span class="n">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">inject_into_headers</span><span class="p" data-group-id="2650649978-1">(</span><span class="p" data-group-id="2650649978-2">[</span><span class="p" data-group-id="2650649978-2">]</span><span class="p" data-group-id="2650649978-1">)</span><span class="w">
-</span><span class="nc">Gnat</span><span class="o">.</span><span class="n">pub</span><span class="p" data-group-id="2650649978-3">(</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="n">subject</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="ss">headers</span><span class="p">:</span><span class="w"> </span><span class="n">headers</span><span class="p" data-group-id="2650649978-3">)</span></code></pre><p><strong>Logging (auto-included once set):</strong></p><pre><code class="makeup elixir" translate="no"><span class="nc">Logger</span><span class="w"> </span><span class="n">calls</span><span class="w"> </span><span class="n">automatically</span><span class="w"> </span><span class="n">include</span><span class="w"> </span><span class="n">correlation_id</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="ow">when</span><span class="w"> </span><span class="n">present</span><span class="o">.</span></code></pre>
+that flows through all subsequent NATS messages and appears in all logs.</p><h2 id="module-usage" class="section-heading"><a href="#module-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><p><strong>Entry point (generate on user request):</strong></p><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">put</span><span class="p" data-group-id="7151615321-1">(</span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">generate</span><span class="p" data-group-id="7151615321-2">(</span><span class="p" data-group-id="7151615321-2">)</span><span class="p" data-group-id="7151615321-1">)</span></code></pre><p><strong>Consumer (extract from incoming message):</strong></p><pre><code class="makeup elixir" translate="no"><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">extract_from_headers</span><span class="p" data-group-id="7632916565-1">(</span><span class="n">msg</span><span class="o">.</span><span class="n">headers</span><span class="p" data-group-id="7632916565-1">)</span><span class="w">
+</span><span class="o">|&gt;</span><span class="w"> </span><span class="k">case</span><span class="w"> </span><span class="k" data-group-id="7632916565-2">do</span><span class="w">
+  </span><span class="no">nil</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">put</span><span class="p" data-group-id="7632916565-3">(</span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">generate</span><span class="p" data-group-id="7632916565-4">(</span><span class="p" data-group-id="7632916565-4">)</span><span class="p" data-group-id="7632916565-3">)</span><span class="w">
+  </span><span class="n">id</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">put</span><span class="p" data-group-id="7632916565-5">(</span><span class="n">id</span><span class="p" data-group-id="7632916565-5">)</span><span class="w">
+</span><span class="k" data-group-id="7632916565-2">end</span></code></pre><p><strong>Publisher (auto-injected):</strong></p><pre><code class="makeup elixir" translate="no"><span class="n">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">BotArmyRuntime.Correlation</span><span class="o">.</span><span class="n">inject_into_headers</span><span class="p" data-group-id="7367839321-1">(</span><span class="p" data-group-id="7367839321-2">[</span><span class="p" data-group-id="7367839321-2">]</span><span class="p" data-group-id="7367839321-1">)</span><span class="w">
+</span><span class="nc">Gnat</span><span class="o">.</span><span class="n">pub</span><span class="p" data-group-id="7367839321-3">(</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="n">subject</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="ss">headers</span><span class="p">:</span><span class="w"> </span><span class="n">headers</span><span class="p" data-group-id="7367839321-3">)</span></code></pre><p><strong>Logging (auto-included once set):</strong></p><pre><code class="makeup elixir" translate="no"><span class="nc">Logger</span><span class="w"> </span><span class="n">calls</span><span class="w"> </span><span class="n">automatically</span><span class="w"> </span><span class="n">include</span><span class="w"> </span><span class="n">correlation_id</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="ow">when</span><span class="w"> </span><span class="n">present</span><span class="o">.</span></code></pre>
     </section>
 
 </div>

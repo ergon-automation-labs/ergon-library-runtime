@@ -46,6 +46,11 @@ The Context Broker subscribes to all `bot.army.pulse.*` subjects to:
 
 Alerting on stale pulses is handled by `army.health.check` subscriber.
 
+## Observability
+
+Each publish emits `[:bot_army, :personality, :pulse, :publish]` with `outcome` `:ok` or
+`:error` (NATS down still surfaces as a metric). See `BotArmyRuntime.Personality.Observability`.
+
 # `build_state`
 
 ```elixir

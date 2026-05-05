@@ -3,6 +3,7 @@ BotArmy.Soul.md
 BotArmyRuntime.Application.md
 BotArmyRuntime.Correlation.md
 BotArmyRuntime.Ecto.Repo.md
+BotArmyRuntime.GtdPollAllocator.md
 BotArmyRuntime.Health.Monitor.md
 BotArmyRuntime.Health.Responder.md
 BotArmyRuntime.Logging.md
@@ -20,6 +21,7 @@ BotArmyRuntime.NATS.Publisher.md
 BotArmyRuntime.NATS.Reply.md
 BotArmyRuntime.Personality.Formatter.md
 BotArmyRuntime.Personality.Identity.md
+BotArmyRuntime.Personality.Observability.md
 BotArmyRuntime.PromEx.md
 BotArmyRuntime.Registry.md
 BotArmyRuntime.Telemetry.md
