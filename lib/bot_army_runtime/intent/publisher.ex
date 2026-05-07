@@ -110,6 +110,8 @@ defmodule BotArmyRuntime.Intent.Publisher do
           correlation_id: correlation_id
         )
 
+        publish_proposed_event(bot_name, action, intent_id, envelope, correlation_id)
+
         if Keyword.get(opts, :skip_veto, false) do
           {:proceed, intent_id, []}
         else
@@ -182,6 +184,34 @@ defmodule BotArmyRuntime.Intent.Publisher do
     }
 
     Publisher.publish(endorse_subj, payload)
+  end
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Events
+  # ───────────────────────────────────────────────────────────────────────────
+
+  defp publish_proposed_event(bot_name, action, intent_id, envelope, correlation_id) do
+    event = %{
+      "event_id" => UUID.uuid4(),
+      "event" => "events.bot_army.intent.proposed",
+      "schema_version" => "1.0",
+      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "source" => "bot_army_runtime",
+      "source_node" => Atom.to_string(node()),
+      "payload" => %{
+        "bot_name" => bot_name,
+        "action" => action,
+        "intent_id" => intent_id,
+        "correlation_id" => correlation_id,
+        "score" => Map.get(envelope, :threshold_result, %{}) |> Map.get(:score, 0),
+        "reason" => Map.get(envelope, :decision, "act"),
+        "proposed_at" => DateTime.utc_now() |> DateTime.to_iso8601()
+      }
+    }
+
+    Task.start(fn ->
+      Publisher.publish("events.bot_army.intent.proposed", event)
+    end)
   end
 
   # ───────────────────────────────────────────────────────────────────────────
