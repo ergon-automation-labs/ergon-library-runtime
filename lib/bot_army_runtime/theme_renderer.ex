@@ -26,8 +26,9 @@ defmodule BotArmyRuntime.ThemeRenderer do
 
   Pass-through fields (id, count, url, code, etc.) are never vocabulary-substituted.
   """
-  @spec render(map(), ThemeConfig.t()) :: map()
-  def render(structured_data, %ThemeConfig{} = theme) when is_map(structured_data) do
+  @spec render(map(), ThemeConfig.t(), map() | nil) :: map()
+  def render(structured_data, %ThemeConfig{} = theme, _world_snapshot \\ nil)
+      when is_map(structured_data) do
     type = Map.get(structured_data, "type", "unknown")
     template = get_template(theme, type)
     label = label_for(type, theme)

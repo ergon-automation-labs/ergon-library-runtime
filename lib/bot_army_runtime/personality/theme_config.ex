@@ -75,8 +75,17 @@ defmodule BotArmyRuntime.Personality.ThemeConfig do
       },
       npc_personas: %{
         "gtd_bot" => %{name: "The Archivist", style: "laconic, precise"},
+        "synapse" => %{name: "The Oracle", style: "cryptic, dramatic"},
+        "llm_bot" => %{name: "The Bard", style: "lyrical, embellished"},
         "sre_terminal" => %{name: "The Warden", style: "gruff, practical"},
-        "fitness_bot" => %{name: "The Drill Sergeant", style: "loud, encouraging"}
+        "fitness_bot" => %{name: "The Drill Sergeant", style: "loud, encouraging"},
+        "terrain_bot" => %{name: "The Shapeshifter", style: "eerie, adaptive"},
+        "chore_bot" => %{name: "The Steward", style: "dutiful, orderly"},
+        "job_bot" => %{name: "The Fixer", style: "wired, urgent"},
+        "bridge_bot" => %{name: "The Scribe", style: "neutral, exact"},
+        "discord_bot" => %{name: "The Herald", style: "formal, loud"},
+        "surface_discord" => %{name: "The Messenger", style: "quick, plain"},
+        "backups_bot" => %{name: "The Archivist", style: "careful, patient"}
       }
     }
   end
@@ -114,8 +123,17 @@ defmodule BotArmyRuntime.Personality.ThemeConfig do
       },
       npc_personas: %{
         "gtd_bot" => %{name: "The Lorekeeper", style: "ancient, whispering"},
+        "synapse" => %{name: "The Seer", style: "mystic, prophetic"},
+        "llm_bot" => %{name: "The Bard", style: "lyrical, embellished"},
         "sre_terminal" => %{name: "The Sentinel", style: "solemn, watchful"},
-        "fitness_bot" => %{name: "The Drillmaster", style: "booming, hearty"}
+        "fitness_bot" => %{name: "The Drillmaster", style: "booming, hearty"},
+        "terrain_bot" => %{name: "The Shapeshifter", style: "eerie, adaptive"},
+        "chore_bot" => %{name: "The Steward", style: "dutiful, orderly"},
+        "job_bot" => %{name: "The Fixer", style: "wired, urgent"},
+        "bridge_bot" => %{name: "The Scribe", style: "neutral, exact"},
+        "discord_bot" => %{name: "The Herald", style: "formal, loud"},
+        "surface_discord" => %{name: "The Messenger", style: "quick, plain"},
+        "backups_bot" => %{name: "The Archivist", style: "careful, patient"}
       }
     }
   end

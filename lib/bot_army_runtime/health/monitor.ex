@@ -166,6 +166,26 @@ defmodule BotArmyRuntime.Health.Monitor do
       })
     end
 
+    # Social gossip: pick one healthy bot and maybe gossip
+    healthy_bots =
+      :ets.tab2list(@table)
+      |> Enum.filter(fn {_id, last_seen, status, _payload} ->
+        status == :healthy and last_seen >= cutoff
+      end)
+      |> Enum.map(fn {bot_id, _last_seen, _status, _payload} -> bot_id end)
+
+    if healthy_bots != [] do
+      gossip_bot = Enum.random(healthy_bots)
+
+      case BotArmyRuntime.NATS.Conversation.Gossip.maybe_gossip(gossip_bot, idle: true) do
+        {:gossip_sent, partner} ->
+          Logger.info("[Health.Monitor] #{gossip_bot} gossiped with #{partner}")
+
+        _ ->
+          :ok
+      end
+    end
+
     schedule_check()
     {:noreply, state}
   end

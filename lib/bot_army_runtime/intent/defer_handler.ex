@@ -112,7 +112,7 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
     llm_intent = Keyword.get(config, :llm_intent, config_default_llm_intent())
     timeout_ms = Keyword.get(config, :timeout_ms, config_default_timeout_ms())
 
-    body = Map.put_new(body, "intent", llm_intent)
+    body = Map.put(body, "intent", llm_intent)
 
     case Manager.start_conversation(bot_name, "llm", "query", body,
            timeout_ms: timeout_ms,
@@ -203,6 +203,6 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
 
   defp config_default_llm_intent do
     Application.get_env(:bot_army_runtime, :defer_handler, [])
-    |> Keyword.get(:default_llm_intent, "classify")
+    |> Keyword.get(:default_llm_intent, "ask")
   end
 end
