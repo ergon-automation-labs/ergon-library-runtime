@@ -8,10 +8,24 @@ defmodule BotArmyRuntime.RegistryTest do
     case BotArmyRuntime.Registry.list_bots() do
       {:ok, bots} ->
         Enum.each(bots, fn bot -> BotArmyRuntime.Registry.deregister(bot["name"]) end)
+        # Wait a moment for deregistrations to settle
+        Process.sleep(10)
 
       :error ->
         :ok
     end
+
+    on_exit(fn ->
+      # Cleanup after test completes
+      case BotArmyRuntime.Registry.list_bots() do
+        {:ok, bots} ->
+          Enum.each(bots, fn bot -> BotArmyRuntime.Registry.deregister(bot["name"]) end)
+          Process.sleep(10)
+
+        :error ->
+          :ok
+      end
+    end)
 
     :ok
   end
