@@ -12,11 +12,36 @@ config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
   queue_interval: 1000
 
 # Configure NATS
-nats_host = System.get_env("NATS_HOST", "localhost")
-nats_port = System.get_env("NATS_PORT", "4222") |> String.to_integer()
+# Multi-cluster support: parse NATS_SERVERS as space-separated "host:port" list
+# Examples:
+#   NATS_SERVERS="localhost:4222 localhost:14223"  # Primary + HA
+#   NATS_SERVERS="localhost:14224"                  # Background cluster
+#   (falls back to NATS_HOST:NATS_PORT if not set)
+nats_servers =
+  case System.get_env("NATS_SERVERS") do
+    nil ->
+      # Fallback: use NATS_HOST and NATS_PORT
+      nats_host = System.get_env("NATS_HOST", "localhost")
+      nats_port = System.get_env("NATS_PORT", "4222") |> String.to_integer()
+      [{nats_host, nats_port}]
+
+    servers_string ->
+      # Parse space-separated "host:port" list
+      servers_string
+      |> String.split()
+      |> Enum.map(fn server_spec ->
+        case String.split(server_spec, ":") do
+          [host, port_str] -> {host, String.to_integer(port_str)}
+          # default port
+          [host] -> {host, 4222}
+          # fallback
+          _ -> {"localhost", 4222}
+        end
+      end)
+  end
 
 config :bot_army_runtime, :nats,
-  servers: [{nats_host, nats_port}],
+  servers: nats_servers,
   ping_interval: 30_000,
   max_reconnect_attempts: 10,
   reconnect_delay_ms: 1000

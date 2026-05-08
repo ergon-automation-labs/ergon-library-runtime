@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.Intent.ActionHandlerTest do
   use ExUnit.Case, async: false
+  @moduletag :core
 
   alias BotArmyRuntime.Intent.ActionHandler
 

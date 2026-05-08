@@ -1,14 +1,16 @@
 defmodule BotArmyRuntime.NATS.Connection do
   @moduledoc """
-  Manages the connection to the NATS message bus.
+  Manages the connection to the NATS message bus with multi-cluster support.
 
   Responsibilities:
   - Establishing and maintaining a connection to NATS
-  - Handling reconnection with exponential backoff
+  - Handling reconnection with exponential backoff (tries all servers in list)
   - Managing the connection state
   - Providing a connection handle for publishers
 
   ## Configuration
+
+  ### Single Cluster (Default)
 
   Configure in `config.exs`:
 
@@ -18,15 +20,52 @@ defmodule BotArmyRuntime.NATS.Connection do
         max_reconnect_attempts: 10,
         reconnect_delay_ms: 1000
 
+  ### Multi-Cluster via Environment
+
+  Set `NATS_SERVERS` as space-separated "host:port" list:
+
+      export NATS_SERVERS="localhost:4222 localhost:14223"  # Primary + HA failover
+      export NATS_SERVERS="localhost:14224"                  # Background cluster
+
+  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4222).
+
+  ### Cluster Selection Strategy
+
+  **Hot-path bots (user-facing):**
+  ```bash
+  export NATS_SERVERS="localhost:4222 localhost:14223"
+  ```
+  Tries 4222 first, falls back to 14223 if 4222 is down (HA pair).
+
+  **Background bots (long-running):**
+  ```bash
+  export NATS_SERVERS="localhost:14224"
+  ```
+  Dedicated background cluster, no failover needed.
+
+  **Dev/test:**
+  ```bash
+  export NATS_SERVERS="localhost:4223"  # dev
+  export NATS_SERVERS="localhost:4224"  # test
+  ```
+
   ## Connection Handle
 
   The connection is stored in a named GenServer under `:gnat` key.
   Publishers access it via `GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection)`.
 
+  When given multiple servers, Gnat tries them in order and uses the first available one.
+
   ## Error Handling
 
   Connection failures are logged and recovery is attempted automatically.
-  If max reconnect attempts are exceeded, the application is halted.
+  - If all servers are down, retries with exponential backoff (max 10 attempts by default)
+  - If max reconnect attempts are exceeded, the application is halted
+  - Status is broadcast via Registry so supervisors can react to connection state changes
+
+  ## Multi-Cluster Failover
+
+  For HA setup (e.g., 4222 + 14223 behind HAProxy), the runtime doesn't need to know about failover—HAProxy handles it at the network level. Just list both servers in NATS_SERVERS and Gnat will try the first one; if it fails, it automatically tries the next.
   """
 
   use GenServer

@@ -38,11 +38,17 @@ defmodule BotArmyRuntime.Health.Responder do
 
   @impl true
   def init(opts) do
+    bot_name = Keyword.fetch!(opts, :bot_name)
+    health_subject = Keyword.get(opts, :health_subject, "bot.#{bot_name}.health")
+    subjects_subject = Keyword.get(opts, :subjects_subject, "bot.#{bot_name}.subjects")
+
     state = %{
-      bot_name: Keyword.fetch!(opts, :bot_name),
+      bot_name: bot_name,
       repo: Keyword.get(opts, :repo),
       process_names: Keyword.get(opts, :process_names, []),
       version: Keyword.get(opts, :version, "unknown"),
+      health_subject: health_subject,
+      subjects_subject: subjects_subject,
       subjects: [],
       connection: nil,
       health_subscription: nil,
@@ -71,8 +77,8 @@ defmodule BotArmyRuntime.Health.Responder do
   defp connect_existing(state) do
     case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
       {:ok, conn} ->
-        health_subject = "bot.#{state.bot_name}.health"
-        subjects_subject = "bot.#{state.bot_name}.subjects"
+        health_subject = state.health_subject
+        subjects_subject = state.subjects_subject
 
         with {:ok, health_sub} <- Gnat.sub(conn, self(), health_subject),
              {:ok, subjects_sub} <- Gnat.sub(conn, self(), subjects_subject) do
@@ -103,15 +109,14 @@ defmodule BotArmyRuntime.Health.Responder do
   @impl true
   def handle_info({:msg, %{topic: topic, reply_to: reply_to}}, state) when not is_nil(reply_to) do
     payload =
-      case topic do
-        "bot." <> _ ->
-          if String.ends_with?(topic, ".health") do
-            build_health_response(state)
-          else
-            build_subjects_response(state)
-          end
+      cond do
+        topic == state.health_subject ->
+          build_health_response(state)
 
-        _ ->
+        topic == state.subjects_subject ->
+          build_subjects_response(state)
+
+        true ->
           Jason.encode!(%{"ok" => false, "error" => "unknown_subject"})
       end
 

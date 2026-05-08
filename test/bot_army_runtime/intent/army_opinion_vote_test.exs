@@ -1,5 +1,6 @@
 defmodule BotArmyRuntime.Intent.ArmyOpinionVoteTest do
   use ExUnit.Case, async: true
+  @moduletag :core
 
   alias BotArmyRuntime.Intent.ArmyOpinionVote
 
