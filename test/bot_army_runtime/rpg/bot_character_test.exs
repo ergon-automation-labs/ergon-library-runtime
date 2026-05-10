@@ -10,7 +10,7 @@ defmodule BotArmyRuntime.RPG.BotCharacterTest do
     end
 
     test "normalizes atom bot_id" do
-      assert {:ok, "Synapse"} = BotCharacter.name(:synapse)
+      assert {:ok, "Runtime Unknown Bot"} = BotCharacter.name(:runtime_unknown_bot)
     end
 
     test "strips bot_army_ prefix for fallback" do

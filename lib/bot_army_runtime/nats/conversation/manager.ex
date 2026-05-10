@@ -210,11 +210,13 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
     threshold = now - 300_000
 
     :ets.foldl(
-      fn {id, conv}, :ok ->
+      fn {id, conv}, acc ->
         if conv.status in [:completed, :timed_out, :orphaned] and
              (conv.cancelled_at || conv.timed_out_at || 0) < threshold do
           :ets.delete(state.ets, id)
         end
+
+        acc
       end,
       :ok,
       state.ets
