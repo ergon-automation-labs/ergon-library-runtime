@@ -21,7 +21,7 @@ defmodule BotArmySkills.Repo.Migrations.UpdateFactoryResultsExportSkillV0_3_34 d
       """
       UPDATE skills
       SET is_active = false, updated_at = timezone('UTC', now())
-      WHERE tenant_id = $1::uuid
+      WHERE tenant_id = $1
         AND slug = $2
       """,
       [@default_tenant_id, @skill_slug]
@@ -32,12 +32,12 @@ defmodule BotArmySkills.Repo.Migrations.UpdateFactoryResultsExportSkillV0_3_34 d
       WITH next_version AS (
         SELECT COALESCE(MAX(version), 0) + 1 AS value
         FROM skills
-        WHERE tenant_id = $1::uuid
+        WHERE tenant_id = $1
           AND slug = $2
       )
       INSERT INTO skills (tenant_id, name, slug, markdown_content, version, is_active, inserted_at, updated_at)
       SELECT
-        $1::uuid,
+        $1,
         $3,
         $2,
         $4,

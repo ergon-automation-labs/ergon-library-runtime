@@ -21,7 +21,7 @@ defmodule BotArmySkills.Repo.Migrations.AddFactoryResultsExportSkillAndActions d
     repo().query!(
       """
       DELETE FROM tenant_actions
-      WHERE tenant_id = $1::uuid
+      WHERE tenant_id = $1
         AND slug IN ($2, $3, $4)
       """,
       [@default_tenant_id, @query_action_slug, @write_action_slug, @notify_action_slug]
@@ -30,7 +30,7 @@ defmodule BotArmySkills.Repo.Migrations.AddFactoryResultsExportSkillAndActions d
     repo().query!(
       """
       DELETE FROM skills
-      WHERE tenant_id = $1::uuid
+      WHERE tenant_id = $1
         AND slug = $2
       """,
       [@default_tenant_id, @skill_slug]
@@ -48,7 +48,7 @@ defmodule BotArmySkills.Repo.Migrations.AddFactoryResultsExportSkillAndActions d
     repo().query!(
       """
       INSERT INTO tenant_actions (tenant_id, slug, type, config_json, is_active, inserted_at, updated_at)
-      VALUES ($1::uuid, $2, $3, $4::jsonb, true, timezone('UTC', now()), timezone('UTC', now()))
+      VALUES ($1, $2, $3, $4::jsonb, true, timezone('UTC', now()), timezone('UTC', now()))
       ON CONFLICT (tenant_id, slug)
       DO UPDATE SET
         type = EXCLUDED.type,
@@ -71,7 +71,7 @@ defmodule BotArmySkills.Repo.Migrations.AddFactoryResultsExportSkillAndActions d
     repo().query!(
       """
       INSERT INTO tenant_actions (tenant_id, slug, type, config_json, is_active, inserted_at, updated_at)
-      VALUES ($1::uuid, $2, $3, $4::jsonb, true, timezone('UTC', now()), timezone('UTC', now()))
+      VALUES ($1, $2, $3, $4::jsonb, true, timezone('UTC', now()), timezone('UTC', now()))
       ON CONFLICT (tenant_id, slug)
       DO UPDATE SET
         type = EXCLUDED.type,
@@ -94,7 +94,7 @@ defmodule BotArmySkills.Repo.Migrations.AddFactoryResultsExportSkillAndActions d
     repo().query!(
       """
       INSERT INTO tenant_actions (tenant_id, slug, type, config_json, is_active, inserted_at, updated_at)
-      VALUES ($1::uuid, $2, $3, $4::jsonb, true, timezone('UTC', now()), timezone('UTC', now()))
+      VALUES ($1, $2, $3, $4::jsonb, true, timezone('UTC', now()), timezone('UTC', now()))
       ON CONFLICT (tenant_id, slug)
       DO UPDATE SET
         type = EXCLUDED.type,
@@ -113,7 +113,7 @@ defmodule BotArmySkills.Repo.Migrations.AddFactoryResultsExportSkillAndActions d
       """
       UPDATE skills
       SET is_active = false, updated_at = timezone('UTC', now())
-      WHERE tenant_id = $1::uuid
+      WHERE tenant_id = $1
         AND slug = $2
       """,
       [@default_tenant_id, @skill_slug]
@@ -124,12 +124,12 @@ defmodule BotArmySkills.Repo.Migrations.AddFactoryResultsExportSkillAndActions d
       WITH next_version AS (
         SELECT COALESCE(MAX(version), 0) + 1 AS value
         FROM skills
-        WHERE tenant_id = $1::uuid
+        WHERE tenant_id = $1
           AND slug = $2
       )
       INSERT INTO skills (tenant_id, name, slug, markdown_content, version, is_active, inserted_at, updated_at)
       SELECT
-        $1::uuid,
+        $1,
         $3,
         $2,
         $4,

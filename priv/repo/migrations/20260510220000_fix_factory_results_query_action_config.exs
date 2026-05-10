@@ -26,7 +26,7 @@ defmodule BotArmySkills.Repo.Migrations.FixFactoryResultsQueryActionConfig do
       """
       UPDATE tenant_actions
       SET config_json = $1::jsonb, updated_at = timezone('UTC', now())
-      WHERE tenant_id = $2::uuid
+      WHERE tenant_id = $2
         AND slug = $3
       """,
       [config, @default_tenant_id, @query_action_slug]
