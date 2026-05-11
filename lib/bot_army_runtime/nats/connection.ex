@@ -93,17 +93,44 @@ defmodule BotArmyRuntime.NATS.Connection do
 
   @impl true
   def init(opts) do
+    nats_env = Application.get_env(:bot_army_runtime, :nats, []) || []
+
     state = %{
-      servers: Keyword.get(opts, :servers, @default_servers),
-      ping_interval: Keyword.get(opts, :ping_interval, @default_ping_interval),
+      servers: pick_servers(opts, nats_env),
+      ping_interval: pick_opt(opts, nats_env, :ping_interval, @default_ping_interval),
       max_reconnect_attempts:
-        Keyword.get(opts, :max_reconnect_attempts, @default_max_reconnect_attempts),
-      reconnect_delay_ms: Keyword.get(opts, :reconnect_delay_ms, @default_reconnect_delay_ms),
+        pick_opt(opts, nats_env, :max_reconnect_attempts, @default_max_reconnect_attempts),
+      reconnect_delay_ms:
+        pick_opt(opts, nats_env, :reconnect_delay_ms, @default_reconnect_delay_ms),
       connection: nil,
       reconnect_attempts: 0
     }
 
     {:ok, state, {:continue, :connect}}
+  end
+
+  defp pick_servers(opts, nats_env) do
+    case Keyword.get(opts, :servers) do
+      nil ->
+        case Keyword.get(nats_env, :servers) do
+          nil -> @default_servers
+          list when is_list(list) and list != [] -> list
+          _ -> @default_servers
+        end
+
+      list when is_list(list) and list != [] ->
+        list
+
+      _ ->
+        @default_servers
+    end
+  end
+
+  defp pick_opt(opts, nats_env, key, default) do
+    case Keyword.get(opts, key) do
+      nil -> Keyword.get(nats_env, key, default)
+      v -> v
+    end
   end
 
   @impl true
