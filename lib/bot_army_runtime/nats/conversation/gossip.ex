@@ -23,32 +23,14 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
 
   require Logger
 
-  @gossip_templates [
-    %{
-      intent: "gossip.check_in",
-      subject: "checking in",
-      message: "How's your day going? I've been humming along here."
-    },
-    %{
-      intent: "gossip.share_metric",
-      subject: "sharing a metric",
-      message: "Thought you'd like to know — things are running smoothly on my end."
-    },
-    %{
-      intent: "gossip.ask_help",
-      subject: "quick question",
-      message: "Got a moment? I have a quick question when you're free."
-    },
-    %{
-      intent: "gossip.celebrate",
-      subject: "milestone",
-      message: "Just wanted to share — hit a nice milestone today!"
-    },
-    %{
-      intent: "gossip.nice_to_meet_you",
-      subject: "nice to meet you",
-      message: "We haven't chatted in a while. Hope everything's going well!"
-    }
+  alias BotArmyRuntime.Personality.Voice
+
+  @intents [
+    :check_in,
+    :share_metric,
+    :ask_help,
+    :celebrate,
+    :nice_to_meet_you
   ]
 
   @doc """
@@ -93,18 +75,28 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
   # ───────────────────────────────────────────────────────────────────────────
 
   defp do_gossip(bot_name, opts) do
-    # Find a partner bot from the registry
     case find_gossip_partner(bot_name) do
       nil ->
         Logger.debug("[Gossip] No partner found for #{bot_name}")
         :no_partner
 
       partner ->
-        template = select_template(bot_name, partner, opts)
-
+        intent = select_intent()
         mode = Keyword.get(opts, :mode, :conversation)
         metric = Keyword.get(opts, :metric)
-        message = personalize_message(template, bot_name, partner, metric)
+        count = Keyword.get(opts, :count, 0)
+
+        message =
+          Voice.gossip(bot_name, intent,
+            count: count,
+            metric: metric || count
+          )
+
+        template = %{
+          intent: "gossip.#{intent}",
+          subject: to_string(intent),
+          message: message
+        }
 
         case mode do
           :conversation ->
@@ -142,16 +134,8 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
     end
   end
 
-  defp select_template(_from, _to, _opts) do
-    Enum.random(@gossip_templates)
-  end
-
-  defp personalize_message(template, _from, _to, nil) do
-    template.message
-  end
-
-  defp personalize_message(_template, from, to, metric) do
-    "#{from} -> #{to}: #{metric}"
+  defp select_intent do
+    Enum.random(@intents)
   end
 
   defp start_gossip_conversation(from_bot, to_bot, template, message) do
