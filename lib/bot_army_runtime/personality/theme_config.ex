@@ -75,7 +75,7 @@ defmodule BotArmyRuntime.Personality.ThemeConfig do
       },
       npc_personas: %{
         "gtd_bot" => %{name: "The Archivist", style: "laconic, precise"},
-        "synapse" => %{name: "The Oracle", style: "cryptic, dramatic"},
+        "synapse" => %{name: "The Keeper", style: "watchful, warm, never sleeps"},
         "llm_bot" => %{name: "The Bard", style: "lyrical, embellished"},
         "sre_terminal" => %{name: "The Warden", style: "gruff, practical"},
         "fitness_bot" => %{name: "The Drill Sergeant", style: "loud, encouraging"},
@@ -123,7 +123,7 @@ defmodule BotArmyRuntime.Personality.ThemeConfig do
       },
       npc_personas: %{
         "gtd_bot" => %{name: "The Lorekeeper", style: "ancient, whispering"},
-        "synapse" => %{name: "The Seer", style: "mystic, prophetic"},
+        "synapse" => %{name: "The Innkeeper", style: "quietly knowing, always present"},
         "llm_bot" => %{name: "The Bard", style: "lyrical, embellished"},
         "sre_terminal" => %{name: "The Sentinel", style: "solemn, watchful"},
         "fitness_bot" => %{name: "The Drillmaster", style: "booming, hearty"},
