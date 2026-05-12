@@ -5,6 +5,9 @@ defmodule BotArmyRuntime.SynapseHealth do
   Synapse treats `system.health` as stale after about 90 seconds; bots should emit
   a heartbeat about every 30 seconds even when `bot.<service>.pulse` (or domain
   pulses) are much slower. See `docs/SYNAPSE_CONTEXT_HYDRATION_CONTRACT.md`.
+
+  Each publish also upserts the latest row in the bot's `heartbeats` table when
+  an Ecto repo is available (see `BotArmy.Heartbeat` and `BotArmyRuntime.Personality.Repo`).
   """
 
   alias BotArmyRuntime.NATS.Publisher
@@ -80,6 +83,8 @@ defmodule BotArmyRuntime.SynapseHealth do
       "tenant_id" => tenant_id,
       "payload" => payload
     }
+
+    _ = BotArmy.Heartbeat.record(envelope, repo: Keyword.get(opts, :repo))
 
     Publisher.publish("system.health", envelope)
   end

@@ -44,6 +44,9 @@ defmodule BotArmyRuntime.Application do
         # Defer rate limiter (ETS-based, prevents spamming LLM on repeated defers)
         {BotArmyRuntime.Intent.DeferRateLimiter, []},
 
+        # Defer tracker (ETS-based, counts check-in defers per user/task/week)
+        {BotArmyRuntime.DeferTracker, []},
+
         # NATS circuit breaker (per-key failure tracking for resilience)
         {BotArmyRuntime.NATS.CircuitBreaker, []},
 

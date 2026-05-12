@@ -66,6 +66,7 @@ defmodule BotArmy.Soul do
 
   alias BotArmyRuntime.NATS.Publisher
   alias BotArmyRuntime.Personality.Observability
+  alias BotArmyRuntime.Personality.Repo, as: PersonalityRepo
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -133,7 +134,7 @@ defmodule BotArmy.Soul do
     bot_id_str = Atom.to_string(bot_id) |> String.replace_prefix("bot_army_", "")
 
     tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
-    repo = Keyword.get(opts, :repo, BotArmyRuntime.Ecto.Repo)
+    repo = PersonalityRepo.resolve(Keyword.get(opts, :repo))
 
     result = query_soul_row(repo, bot_id_str, tenant_id)
 
@@ -214,7 +215,7 @@ defmodule BotArmy.Soul do
     bot_id_str = Atom.to_string(bot_id) |> String.replace_prefix("bot_army_", "")
 
     tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
-    repo = Keyword.get(opts, :repo, BotArmyRuntime.Ecto.Repo)
+    repo = PersonalityRepo.resolve(Keyword.get(opts, :repo))
 
     # Get current soul to determine version (suppress duplicate soul_get telemetry)
     current = get(bot_id, tenant_id: tenant_id, repo: repo, telemetry: false)

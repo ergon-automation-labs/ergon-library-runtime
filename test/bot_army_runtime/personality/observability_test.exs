@@ -34,6 +34,36 @@ defmodule BotArmyRuntime.Personality.ObservabilityTest do
     end
   end
 
+  describe "heartbeat_get_complete/5" do
+    test "emits telemetry with outcome and status" do
+      ref = make_ref()
+      handler = {:personality_heartbeat_get, ref}
+
+      :ok =
+        :telemetry.attach(
+          handler,
+          [:bot_army, :personality, :heartbeat, :get],
+          fn _event, measurements, metadata, _ ->
+            send(self(), {:heartbeat_get, measurements, metadata, ref})
+          end,
+          nil
+        )
+
+      on_exit(fn -> :telemetry.detach(handler) end)
+
+      start = System.monotonic_time()
+      Observability.heartbeat_get_complete(start, "gtd", "tenant-uuid", :found, "healthy")
+
+      assert_receive {:heartbeat_get, measurements, metadata, ^ref}
+      assert measurements.count == 1
+      assert is_integer(measurements.duration)
+      assert metadata.service == "gtd"
+      assert metadata.tenant_id == "tenant-uuid"
+      assert metadata.outcome == :found
+      assert metadata.status == "healthy"
+    end
+  end
+
   describe "BotArmy.Pulse.publish/3" do
     test "emits personality pulse telemetry (NATS may fail without broker)" do
       ref = make_ref()
