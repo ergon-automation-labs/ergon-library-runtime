@@ -59,6 +59,12 @@ defmodule BotArmyRuntime.Application do
         # Conversation manager (cross-bot request/response + mailbox)
         {BotArmyRuntime.NATS.Conversation.Manager, []},
 
+        # Outcome tracker (captures intent lifecycle events from NATS)
+        {BotArmyRuntime.Intent.OutcomeTracker, []},
+
+        # Reflection job (periodic outcome analysis and weight adjustment)
+        {BotArmyRuntime.Intent.ReflectionJob, []},
+
         # Dynamic supervisor for per-bot AccumulatedContext processes
         {DynamicSupervisor, strategy: :one_for_one, name: BotArmyRuntime.DynamicSupervisor}
       ]

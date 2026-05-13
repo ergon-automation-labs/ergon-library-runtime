@@ -91,17 +91,50 @@ defmodule BotArmyRuntime.Intent.ThresholdModel do
   @spec evaluate(String.t(), String.t(), map(), map()) ::
           {:ok, decision(), map()} | {:error, term()}
   def evaluate(bot_name, action, thresholds, context \\ %{}) do
+    evaluate(bot_name, action, thresholds, context, %{})
+  end
+
+  @doc """
+  Evaluate with outcome-based adjustment factors.
+
+  The `adjustments` map has string keys matching observation types, with float
+  values as multipliers on the static weight. For example:
+  `%{"stale_task_count" => 0.7}` reduces that weight by 30%.
+
+  An empty adjustments map (default) produces identical results to `evaluate/4`.
+  """
+  @spec evaluate(String.t(), String.t(), map(), map(), map()) ::
+          {:ok, decision(), map()} | {:error, term()}
+  def evaluate(bot_name, action, thresholds, context, adjustments) do
     context = if context == %{}, do: AccumulatedContext.snapshot(bot_name), else: context
 
     random_threshold = Map.get(thresholds, :random_threshold, 0.5)
 
-    case compute_weighted_score(context, thresholds) do
+    case compute_weighted_score(context, thresholds, adjustments) do
       {:ok, score, score_details} ->
         decide(bot_name, action, score, random_threshold, score_details, thresholds)
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  @doc """
+  Evaluate with adjustments loaded from the database.
+
+  Reads the latest adjustments for the given bot+action from
+  `intent_threshold_adjustments` and uses them as multipliers on
+  the static threshold weights.
+  """
+  @spec evaluate_with_adjustments(String.t(), String.t(), map(), map(), keyword()) ::
+          {:ok, decision(), map()} | {:error, term()}
+  def evaluate_with_adjustments(bot_name, action, thresholds, context, opts \\ []) do
+    adjustments =
+      BotArmy.IntentThresholdAdjustment.latest_adjustments(bot_name, action, opts)
+      |> Enum.map(fn adj -> {adj.observation_type, adj.adjusted_weight / adj.original_weight} end)
+      |> Map.new()
+
+    evaluate(bot_name, action, thresholds, context, adjustments)
   end
 
   @doc """
@@ -118,7 +151,7 @@ defmodule BotArmyRuntime.Intent.ThresholdModel do
   # Private
   # ───────────────────────────────────────────────────────────────────────────
 
-  defp compute_weighted_score(context, thresholds) do
+  defp compute_weighted_score(context, thresholds, adjustments \\ %{}) do
     entries = Map.get(context, :entries, [])
 
     score_details =
@@ -127,22 +160,26 @@ defmodule BotArmyRuntime.Intent.ThresholdModel do
       |> Enum.map(fn {key, config} ->
         entry_type = key
         value = extract_value(entries, entry_type)
-        contribution = compute_contribution(value, config)
+        adjustment = Map.get(adjustments, Atom.to_string(key), 1.0)
+        adjusted_weight = config.weight * adjustment
+        contribution = compute_contribution(value, Map.put(config, :weight, adjusted_weight))
 
         {key,
          %{
            value: value,
            threshold_min: config.min,
            weight: config.weight,
+           adjustment: adjustment,
+           adjusted_weight: adjusted_weight,
            contribution: contribution
          }}
       end)
       |> Map.new()
 
     total_weight =
-      thresholds
-      |> Enum.filter(fn {key, _} -> key != :random_threshold end)
-      |> Enum.map(fn {_, config} -> config.weight end)
+      score_details
+      |> Map.values()
+      |> Enum.map(& &1.adjusted_weight)
       |> Enum.sum()
 
     weighted_sum =
