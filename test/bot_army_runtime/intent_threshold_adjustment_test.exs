@@ -4,6 +4,19 @@ defmodule BotArmy.IntentThresholdAdjustmentTest do
 
   alias BotArmy.IntentThresholdAdjustment
 
+  defmodule MockThresholdRepo do
+    use GenServer
+
+    def start_link(_ \\ []), do: GenServer.start_link(__MODULE__, [], name: __MODULE__)
+    def init(_), do: {:ok, []}
+    def query(_, _), do: {:ok, %Postgrex.Result{rows: [[]]}}
+  end
+
+  setup do
+    start_supervised!(MockThresholdRepo)
+    :ok
+  end
+
   describe "record/2" do
     test "returns :skipped when repo is unavailable" do
       attrs = %{
@@ -28,7 +41,8 @@ defmodule BotArmy.IntentThresholdAdjustmentTest do
         adjusted_weight: 0.42
       }
 
-      assert {:error, :missing_bot_name} = IntentThresholdAdjustment.record(attrs, repo: nil)
+      assert {:error, :missing_bot_name} =
+               IntentThresholdAdjustment.record(attrs, repo: MockThresholdRepo)
     end
 
     test "returns error with missing action" do
@@ -39,7 +53,8 @@ defmodule BotArmy.IntentThresholdAdjustmentTest do
         adjusted_weight: 0.42
       }
 
-      assert {:error, :missing_action} = IntentThresholdAdjustment.record(attrs, repo: nil)
+      assert {:error, :missing_action} =
+               IntentThresholdAdjustment.record(attrs, repo: MockThresholdRepo)
     end
 
     test "returns error with missing observation_type" do
@@ -51,7 +66,7 @@ defmodule BotArmy.IntentThresholdAdjustmentTest do
       }
 
       assert {:error, :missing_observation_type} =
-               IntentThresholdAdjustment.record(attrs, repo: nil)
+               IntentThresholdAdjustment.record(attrs, repo: MockThresholdRepo)
     end
   end
 

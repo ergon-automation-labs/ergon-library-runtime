@@ -161,19 +161,20 @@ defmodule BotArmyRuntime.Intent.ThresholdModelTest do
         idle_minutes: %{min: 30, weight: 0.4}
       }
 
-      {:ok, score_no_adj, details_no_adj} =
+      {:ok, decision_no_adj, details_no_adj} =
         ThresholdModel.evaluate("test_bot", "nudge", thresholds, context)
 
       # Factor 1.0 for everything means no adjustment
       adjustments = %{"stale_task_count" => 1.0, "idle_minutes" => 1.0}
 
-      {:ok, score_adj, details_adj} =
+      {:ok, decision_adj, details_adj} =
         ThresholdModel.evaluate("test_bot", "nudge", thresholds, context, adjustments)
 
-      assert_in_delta score_no_adj, score_adj, 0.001
+      assert decision_no_adj == decision_adj
+      assert_in_delta details_no_adj.score, details_adj.score, 0.001
 
-      assert_in_delta details_no_adj[:stale_task_count].contribution,
-                      details_adj[:stale_task_count].contribution,
+      assert_in_delta details_no_adj.threshold_breakdown[:stale_task_count].contribution,
+                      details_adj.threshold_breakdown[:stale_task_count].contribution,
                       0.001
     end
 
@@ -191,26 +192,28 @@ defmodule BotArmyRuntime.Intent.ThresholdModelTest do
       }
 
       # No adjustments: both weights meet threshold, score = 1.0
-      {:ok, score_baseline, _details} =
+      {:ok, decision_baseline, details_baseline} =
         ThresholdModel.evaluate("test_bot", "nudge", thresholds, context)
 
-      assert score_baseline == 1.0
+      assert decision_baseline == :act
+      assert details_baseline.score == 1.0
 
       # Reduce stale_task_count weight by 50%
       adjustments = %{"stale_task_count" => 0.5}
 
-      {:ok, score_reduced, details} =
+      {:ok, decision_reduced, details} =
         ThresholdModel.evaluate("test_bot", "nudge", thresholds, context, adjustments)
 
       # Adjusted weight for stale_task_count should be 0.6 * 0.5 = 0.3
-      assert details[:stale_task_count].adjusted_weight == 0.3
-      assert details[:stale_task_count].adjustment == 0.5
+      assert details.threshold_breakdown[:stale_task_count].adjusted_weight == 0.3
+      assert details.threshold_breakdown[:stale_task_count].adjustment == 0.5
       # idle_minutes weight unchanged
-      assert details[:idle_minutes].adjusted_weight == 0.4
+      assert details.threshold_breakdown[:idle_minutes].adjusted_weight == 0.4
       # Total weight should be 0.3 + 0.4 = 0.7
       # Weighted sum = 0.3 (stale met) + 0.4 (idle met) = 0.7
       # Score = 0.7 / 0.7 = 1.0 (both still meet thresholds)
-      assert score_reduced == 1.0
+      assert decision_reduced == :act
+      assert details.score == 1.0
     end
 
     test "adjustment factor 0.0 effectively disables an observation type" do
@@ -229,19 +232,22 @@ defmodule BotArmyRuntime.Intent.ThresholdModelTest do
       # With idle_minutes at 5 (below min 30), it contributes 0.
       # stale_task_count at 10 (above min 3) contributes 0.6.
       # Total weight = 0.6 + 0.4 = 1.0. Score = 0.6 / 1.0 = 0.6.
-      {:ok, score_baseline, _} = ThresholdModel.evaluate("test_bot", "nudge", thresholds, context)
-      assert_in_delta score_baseline, 0.6, 0.001
+      {:ok, _decision_baseline, details_baseline} =
+        ThresholdModel.evaluate("test_bot", "nudge", thresholds, context)
+
+      assert_in_delta details_baseline.score, 0.6, 0.001
 
       # Zero out stale_task_count: adjusted weight = 0, contribution = 0
       adjustments = %{"stale_task_count" => 0.0}
 
-      {:ok, score_zeroed, details} =
+      {:ok, decision_zeroed, details} =
         ThresholdModel.evaluate("test_bot", "nudge", thresholds, context, adjustments)
 
-      assert details[:stale_task_count].adjusted_weight == 0.0
+      assert details.threshold_breakdown[:stale_task_count].adjusted_weight == 0.0
       # idle_minutes still 0, stale now 0 contribution with 0 weight
       # Score = 0 / 0.4 = 0.0
-      assert score_zeroed == 0.0
+      assert decision_zeroed == :abort
+      assert details.score == 0.0
     end
 
     test "empty adjustments map produces same result as evaluate/4" do
@@ -273,13 +279,13 @@ defmodule BotArmyRuntime.Intent.ThresholdModelTest do
 
       adjustments = %{"stale_task_count" => 0.7}
 
-      {:ok, _score, details} =
+      {:ok, _decision, details} =
         ThresholdModel.evaluate("test_bot", "nudge", thresholds, context, adjustments)
 
-      assert details[:stale_task_count].weight == 0.6
-      assert details[:stale_task_count].adjustment == 0.7
-      assert details[:stale_task_count].adjusted_weight == 0.42
-      assert details[:stale_task_count].contribution == 0.42
+      assert details.threshold_breakdown[:stale_task_count].weight == 0.6
+      assert details.threshold_breakdown[:stale_task_count].adjustment == 0.7
+      assert details.threshold_breakdown[:stale_task_count].adjusted_weight == 0.42
+      assert details.threshold_breakdown[:stale_task_count].contribution == 0.42
     end
   end
 end

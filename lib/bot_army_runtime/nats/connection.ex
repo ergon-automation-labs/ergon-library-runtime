@@ -15,7 +15,7 @@ defmodule BotArmyRuntime.NATS.Connection do
   Configure in `config.exs`:
 
       config :bot_army_runtime, :nats,
-        servers: [{"localhost", 4222}],
+        servers: [{"localhost", 4223}],
         ping_interval: 30_000,
         max_reconnect_attempts: 10,
         reconnect_delay_ms: 1000
@@ -27,7 +27,7 @@ defmodule BotArmyRuntime.NATS.Connection do
       export NATS_SERVERS="localhost:4222 localhost:14223"  # Primary + HA failover
       export NATS_SERVERS="localhost:14224"                  # Background cluster
 
-  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4222).
+  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4223).
 
   ### Cluster Selection Strategy
 
@@ -73,7 +73,7 @@ defmodule BotArmyRuntime.NATS.Connection do
   require Logger
 
   @name __MODULE__
-  @default_servers [{"localhost", 4222}]
+  @default_servers [{"localhost", 4223}]
   @default_ping_interval 30_000
   @default_max_reconnect_attempts 10
   @default_reconnect_delay_ms 1000
