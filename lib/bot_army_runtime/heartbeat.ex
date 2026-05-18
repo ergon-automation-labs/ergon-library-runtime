@@ -75,6 +75,7 @@ defmodule BotArmy.Heartbeat do
     source = Keyword.fetch!(publish_opts, :source)
     service = Keyword.fetch!(publish_opts, :service)
     tenant_id = Keyword.get(publish_opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_uuid = normalize_tenant_id(tenant_id)
 
     status =
       case Keyword.get(publish_opts, :status) do
@@ -105,7 +106,7 @@ defmodule BotArmy.Heartbeat do
     attrs = %{
       bot_id: service,
       service: service,
-      tenant_id: tenant_id,
+      tenant_id: tenant_uuid,
       source: source,
       status: status,
       uptime_seconds: uptime,
@@ -121,13 +122,15 @@ defmodule BotArmy.Heartbeat do
   defp envelope_to_attrs(%{"event" => "system.health"} = envelope) do
     payload = Map.get(envelope, "payload", %{})
     service = Map.get(payload, "service")
+    tenant_id = Map.get(envelope, "tenant_id", BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_uuid = normalize_tenant_id(tenant_id)
 
     if is_binary(service) and service != "" do
       {:ok,
        %{
          bot_id: service,
          service: service,
-         tenant_id: Map.get(envelope, "tenant_id", BotArmyRuntime.Tenant.default_tenant_id()),
+         tenant_id: tenant_uuid,
          source: Map.get(envelope, "source", "unknown"),
          status: Map.get(payload, "status", "unknown"),
          uptime_seconds: Map.get(payload, "uptime_seconds"),
@@ -380,6 +383,15 @@ defmodule BotArmy.Heartbeat do
 
   defp normalize_service(service) when is_atom(service), do: Atom.to_string(service)
   defp normalize_service(service) when is_binary(service), do: service
+
+  defp normalize_tenant_id(tenant_id) when is_binary(tenant_id) do
+    case Ecto.UUID.dump(tenant_id) do
+      {:ok, uuid_binary} -> uuid_binary
+      :error -> tenant_id
+    end
+  end
+
+  defp normalize_tenant_id(other), do: other
 
   defp tenant_id_label(tenant_id) when is_binary(tenant_id), do: tenant_id
   defp tenant_id_label(other), do: inspect(other)
