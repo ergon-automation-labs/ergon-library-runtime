@@ -216,7 +216,15 @@ defmodule BotArmyRuntime.Health.Monitor do
   # Helpers
 
   defp get_nats_connection do
-    GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000)
+    case Process.whereis(BotArmyRuntime.NATS.Connection) do
+      nil ->
+        {:error, :no_connection_manager}
+
+      _ ->
+        GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000)
+    rescue
+      _ -> {:error, :no_connection_manager}
+    end
   rescue
     _ -> {:error, :no_connection_manager}
   end

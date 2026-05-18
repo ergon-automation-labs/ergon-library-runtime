@@ -153,32 +153,30 @@ defmodule BotArmy.Memory do
   defp normalize_append_attrs(attrs) do
     scope = Map.get(attrs, :scope) || Map.get(attrs, "scope")
 
-    cond do
-      not is_binary(scope) or scope == "" ->
-        {:error, :missing_scope}
+    if not is_binary(scope) or scope == "" do
+      {:error, :missing_scope}
+    else
+      tenant_id =
+        Map.get(attrs, :tenant_id) || Map.get(attrs, "tenant_id") ||
+          BotArmyRuntime.Tenant.default_tenant_id()
 
-      true ->
-        tenant_id =
-          Map.get(attrs, :tenant_id) || Map.get(attrs, "tenant_id") ||
-            BotArmyRuntime.Tenant.default_tenant_id()
+      kind = Map.get(attrs, :kind) || Map.get(attrs, "kind") || "thought"
+      payload = Map.get(attrs, :payload) || Map.get(attrs, "payload") || %{}
 
-        kind = Map.get(attrs, :kind) || Map.get(attrs, "kind") || "thought"
-        payload = Map.get(attrs, :payload) || Map.get(attrs, "payload") || %{}
+      recorded_at =
+        Map.get(attrs, :recorded_at) || Map.get(attrs, "recorded_at") ||
+          DateTime.utc_now() |> DateTime.truncate(:second)
 
-        recorded_at =
-          Map.get(attrs, :recorded_at) || Map.get(attrs, "recorded_at") ||
-            DateTime.utc_now() |> DateTime.truncate(:second)
-
-        {:ok,
-         %{
-           scope: scope,
-           tenant_id: tenant_id,
-           user_id: Map.get(attrs, :user_id) || Map.get(attrs, "user_id"),
-           source: Map.get(attrs, :source) || Map.get(attrs, "source"),
-           kind: kind,
-           payload: payload,
-           recorded_at: recorded_at
-         }}
+      {:ok,
+       %{
+         scope: scope,
+         tenant_id: tenant_id,
+         user_id: Map.get(attrs, :user_id) || Map.get(attrs, "user_id"),
+         source: Map.get(attrs, :source) || Map.get(attrs, "source"),
+         kind: kind,
+         payload: payload,
+         recorded_at: recorded_at
+       }}
     end
   end
 

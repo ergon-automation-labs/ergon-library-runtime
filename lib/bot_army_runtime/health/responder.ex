@@ -75,34 +75,42 @@ defmodule BotArmyRuntime.Health.Responder do
   end
 
   defp connect_existing(state) do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
-      {:ok, conn} ->
-        health_subject = state.health_subject
-        subjects_subject = state.subjects_subject
+    case Process.whereis(BotArmyRuntime.NATS.Connection) do
+      nil ->
+        Logger.warning("[Health] NATS connection process not started yet")
+        Process.send_after(self(), :reconnect, @reconnect_delay_ms)
+        {:noreply, state}
 
-        with {:ok, health_sub} <- Gnat.sub(conn, self(), health_subject),
-             {:ok, subjects_sub} <- Gnat.sub(conn, self(), subjects_subject) do
-          BotArmyRuntime.NATS.Connection.subscribe_to_status()
-          Logger.info("[Health] Subscribed to #{health_subject} and #{subjects_subject}")
+      _ ->
+        case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
+          {:ok, conn} ->
+            health_subject = state.health_subject
+            subjects_subject = state.subjects_subject
 
-          {:noreply,
-           %{
-             state
-             | connection: conn,
-               health_subscription: health_sub,
-               subjects_subscription: subjects_sub
-           }}
-        else
+            with {:ok, health_sub} <- Gnat.sub(conn, self(), health_subject),
+                 {:ok, subjects_sub} <- Gnat.sub(conn, self(), subjects_subject) do
+              BotArmyRuntime.NATS.Connection.subscribe_to_status()
+              Logger.info("[Health] Subscribed to #{health_subject} and #{subjects_subject}")
+
+              {:noreply,
+               %{
+                 state
+                 | connection: conn,
+                   health_subscription: health_sub,
+                   subjects_subscription: subjects_sub
+               }}
+            else
+              {:error, reason} ->
+                Logger.warning("[Health] Failed to subscribe: #{inspect(reason)}")
+                Process.send_after(self(), :reconnect, @reconnect_delay_ms)
+                {:noreply, state}
+            end
+
           {:error, reason} ->
-            Logger.warning("[Health] Failed to subscribe: #{inspect(reason)}")
+            Logger.warning("[Health] NATS not connected: #{inspect(reason)}")
             Process.send_after(self(), :reconnect, @reconnect_delay_ms)
             {:noreply, state}
         end
-
-      {:error, reason} ->
-        Logger.warning("[Health] NATS not connected: #{inspect(reason)}")
-        Process.send_after(self(), :reconnect, @reconnect_delay_ms)
-        {:noreply, state}
     end
   end
 
@@ -170,9 +178,17 @@ defmodule BotArmyRuntime.Health.Responder do
   end
 
   defp check_nats do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
-      {:ok, _} -> :ok
-      {:error, _} -> :error
+    case Process.whereis(BotArmyRuntime.NATS.Connection) do
+      nil ->
+        :error
+
+      _ ->
+        case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
+          {:ok, _} -> :ok
+          {:error, _} -> :error
+        end
+    rescue
+      _ -> :error
     end
   rescue
     _ -> :error
