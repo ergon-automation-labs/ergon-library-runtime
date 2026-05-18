@@ -154,48 +154,61 @@ defmodule BotArmyRuntime.Registry do
 
   @impl true
   def handle_info(:setup_nats, state) do
-    case GenServer.call(Connection, :get_connection, @heartbeat_timeout_ms) do
-      {:ok, conn} ->
-        Logger.info("[Registry] Connected to NATS, setting up query endpoints")
-
-        subs =
-          [
-            "bot_army.registry.bots.list",
-            "bot_army.registry.bot.get",
-            "bot_army.registry.subjects.list",
-            "bot_army.registry.subject.providers.get",
-            "bot_army.registry.capabilities.list",
-            "conv.registry.capabilities.find",
-            "conv.registry.conversation.target",
-            @registry_presence_subject
-          ]
-          |> Enum.map(fn subject ->
-            subscribe_opts =
-              if subject == @registry_presence_subject do
-                []
-              else
-                [queue_group: @registry_queue_group]
-              end
-
-            case Gnat.sub(conn, self(), subject, subscribe_opts) do
-              {:ok, sub} ->
-                Logger.info("[Registry] Subscribed to #{subject}#{queue_group_suffix(subject)}")
-
-                sub
-
-              {:error, reason} ->
-                Logger.error("[Registry] Failed to subscribe to #{subject}: #{inspect(reason)}")
-                nil
-            end
-          end)
-          |> Enum.filter(&(not is_nil(&1)))
-
-        {:noreply, %{state | connection: conn, nats_subscriptions: subs}}
-
-      {:error, reason} ->
-        Logger.warning("[Registry] NATS not ready, retrying in 1s: #{inspect(reason)}")
+    case Process.whereis(Connection) do
+      nil ->
+        Logger.warning("[Registry] NATS connection process not started yet, retrying")
         Process.send_after(self(), :setup_nats, 1000)
         {:noreply, state}
+
+      _ ->
+        case GenServer.call(Connection, :get_connection, @heartbeat_timeout_ms) do
+          {:ok, conn} ->
+            Logger.info("[Registry] Connected to NATS, setting up query endpoints")
+
+            subs =
+              [
+                "bot_army.registry.bots.list",
+                "bot_army.registry.bot.get",
+                "bot_army.registry.subjects.list",
+                "bot_army.registry.subject.providers.get",
+                "bot_army.registry.capabilities.list",
+                "conv.registry.capabilities.find",
+                "conv.registry.conversation.target",
+                @registry_presence_subject
+              ]
+              |> Enum.map(fn subject ->
+                subscribe_opts =
+                  if subject == @registry_presence_subject do
+                    []
+                  else
+                    [queue_group: @registry_queue_group]
+                  end
+
+                case Gnat.sub(conn, self(), subject, subscribe_opts) do
+                  {:ok, sub} ->
+                    Logger.info(
+                      "[Registry] Subscribed to #{subject}#{queue_group_suffix(subject)}"
+                    )
+
+                    sub
+
+                  {:error, reason} ->
+                    Logger.error(
+                      "[Registry] Failed to subscribe to #{subject}: #{inspect(reason)}"
+                    )
+
+                    nil
+                end
+              end)
+              |> Enum.filter(&(not is_nil(&1)))
+
+            {:noreply, %{state | connection: conn, nats_subscriptions: subs}}
+
+          {:error, reason} ->
+            Logger.warning("[Registry] NATS not ready, retrying in 1s: #{inspect(reason)}")
+            Process.send_after(self(), :setup_nats, 1000)
+            {:noreply, state}
+        end
     end
   end
 
