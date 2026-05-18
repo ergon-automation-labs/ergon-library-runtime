@@ -187,8 +187,6 @@ defmodule BotArmyRuntime.Health.Responder do
           {:ok, _} -> :ok
           {:error, _} -> :error
         end
-    rescue
-      _ -> :error
     end
   rescue
     _ -> :error

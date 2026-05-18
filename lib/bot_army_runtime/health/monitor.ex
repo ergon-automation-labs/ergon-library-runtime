@@ -222,8 +222,6 @@ defmodule BotArmyRuntime.Health.Monitor do
 
       _ ->
         GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000)
-    rescue
-      _ -> {:error, :no_connection_manager}
     end
   rescue
     _ -> {:error, :no_connection_manager}
