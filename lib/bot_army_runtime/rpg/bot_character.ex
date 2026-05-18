@@ -1,4 +1,6 @@
 defmodule BotArmyRuntime.RPG.BotCharacter do
+  alias Tenant
+  alias Publisher
   @moduledoc """
   Shared helper for bot character provisioning via NATS.
 
@@ -19,7 +21,7 @@ defmodule BotArmyRuntime.RPG.BotCharacter do
   """
   @spec ensure(atom() | String.t(), String.t() | nil) :: {:ok, map()} | {:error, atom()}
   def ensure(bot_id, tenant_id \\ nil) do
-    tenant_id = tenant_id || BotArmyRuntime.Tenant.default_tenant_id()
+    tenant_id = tenant_id || Tenant.default_tenant_id()
     bot_id_str = normalize_bot_id(bot_id)
 
     payload = %{
@@ -27,7 +29,7 @@ defmodule BotArmyRuntime.RPG.BotCharacter do
       "tenant_id" => tenant_id
     }
 
-    case BotArmyRuntime.NATS.Publisher.request(
+    case Publisher.request(
            "rpg.character.ensure",
            payload,
            timeout_ms: @ensure_timeout_ms
@@ -59,7 +61,7 @@ defmodule BotArmyRuntime.RPG.BotCharacter do
   """
   @spec get_by_bot(atom() | String.t(), String.t() | nil) :: {:ok, map()} | {:error, atom()}
   def get_by_bot(bot_id, tenant_id \\ nil) do
-    tenant_id = tenant_id || BotArmyRuntime.Tenant.default_tenant_id()
+    tenant_id = tenant_id || Tenant.default_tenant_id()
     bot_id_str = normalize_bot_id(bot_id)
 
     payload = %{
@@ -67,7 +69,7 @@ defmodule BotArmyRuntime.RPG.BotCharacter do
       "tenant_id" => tenant_id
     }
 
-    case BotArmyRuntime.NATS.Publisher.request(
+    case Publisher.request(
            "rpg.character.get_by_bot",
            payload,
            timeout_ms: @get_timeout_ms

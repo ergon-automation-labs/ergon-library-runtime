@@ -1,4 +1,7 @@
 defmodule BotArmyRuntime.TestHelpers do
+  alias Publisher
+  alias Repo
+  alias Connection
   @moduledoc """
   Test helpers for Bot Army Runtime.
 
@@ -11,6 +14,9 @@ defmodule BotArmyRuntime.TestHelpers do
 
   require Logger
 
+  alias Publisher
+  alias Repo
+  alias Connection
   @doc """
   Starts a NATS server on the test port (4223) for integration tests.
 
@@ -35,6 +41,9 @@ defmodule BotArmyRuntime.TestHelpers do
     end
   end
 
+  alias Publisher
+  alias Repo
+  alias Connection
   @doc """
   A test helper to run a test with NATS server available.
 
@@ -65,6 +74,9 @@ defmodule BotArmyRuntime.TestHelpers do
     end
   end
 
+  alias Publisher
+  alias Repo
+  alias Connection
   @doc """
   Publishes a test message to a given subject.
 
@@ -75,9 +87,12 @@ defmodule BotArmyRuntime.TestHelpers do
       {:ok, "test.subject"} = publish_test_message("test.subject", %{"key" => "value"})
   """
   def publish_test_message(subject, payload) when is_binary(subject) and is_map(payload) do
-    BotArmyRuntime.NATS.Publisher.publish(subject, payload)
+    Publisher.publish(subject, payload)
   end
 
+  alias Publisher
+  alias Repo
+  alias Connection
   @doc """
   Waits for a message on a given subject with a timeout.
 
@@ -109,6 +124,9 @@ defmodule BotArmyRuntime.TestHelpers do
     end
   end
 
+  alias Publisher
+  alias Repo
+  alias Connection
   @doc """
   Clears all data from a given table (for test cleanup).
 
@@ -119,9 +137,12 @@ defmodule BotArmyRuntime.TestHelpers do
       on_exit(fn -> clear_table(MySchema) end)
   """
   def clear_table(schema) do
-    BotArmyRuntime.Ecto.Repo.delete_all(schema)
+    Repo.delete_all(schema)
   end
 
+  alias Publisher
+  alias Repo
+  alias Connection
   @doc """
   Creates a test fixture in the database.
 
@@ -134,7 +155,7 @@ defmodule BotArmyRuntime.TestHelpers do
   def create_fixture(schema, attrs) when is_list(attrs) do
     schema
     |> struct(attrs)
-    |> BotArmyRuntime.Ecto.Repo.insert!()
+    |> Repo.insert!()
   end
 
   # Private helpers
@@ -163,7 +184,7 @@ defmodule BotArmyRuntime.TestHelpers do
   end
 
   defp get_test_connection do
-    BotArmyRuntime.NATS.Connection
+    Connection
     |> GenServer.call(:get_connection, 1000)
   rescue
     _e -> {:error, :no_connection_manager}

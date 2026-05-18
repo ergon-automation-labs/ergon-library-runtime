@@ -26,10 +26,10 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
   use GenServer
   require Logger
 
-  alias BotArmyRuntime.NATS.Conversation.Envelope
-  alias BotArmyRuntime.Tracing
-  alias BotArmyRuntime.Correlation
-  alias BotArmyRuntime.NATS.Connection
+  alias Envelope
+  alias Tracing
+  alias Correlation
+  alias Connection
 
   # ───────────────────────────────────────────────────────────────────────────
   # Public API
@@ -365,7 +365,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
 
     # Build and publish the request envelope
     envelope =
-      BotArmyRuntime.NATS.Conversation.Envelope.build_request(
+      Envelope.build_request(
         from_bot,
         to_bot,
         message_type,
@@ -442,7 +442,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
 
         # Build reply using stored envelope context
         reply_envelope =
-          BotArmyRuntime.NATS.Conversation.Envelope.build_response(
+          Envelope.build_response(
             %{
               "payload" => %{
                 "conversation_id" => conversation_id,
@@ -531,7 +531,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
           send(conv.caller_pid, {:conv_error, conversation_id, :max_turns_exceeded})
         else
           followup_envelope =
-            BotArmyRuntime.NATS.Conversation.Envelope.build_followup(
+            Envelope.build_followup(
               conversation_id,
               from_bot,
               to_bot,
@@ -721,8 +721,8 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
 
       headers =
         []
-        |> BotArmyRuntime.Tracing.inject_trace_context()
-        |> BotArmyRuntime.Correlation.inject_into_headers()
+        |> Tracing.inject_trace_context()
+        |> Correlation.inject_into_headers()
 
       Gnat.pub(conn, subject, json, headers: headers)
       :ok
@@ -841,7 +841,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
   defp get_nats_connection do
     timeout_ms = Application.get_env(:bot_army_runtime, :nats_connection_timeout, 1000)
 
-    BotArmyRuntime.NATS.Connection
+    Connection
     |> GenServer.call(:get_connection, timeout_ms)
   rescue
     _e -> {:error, :no_connection_manager}

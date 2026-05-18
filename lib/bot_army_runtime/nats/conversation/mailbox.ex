@@ -17,6 +17,11 @@ defmodule BotArmyRuntime.NATS.Conversation.Mailbox do
 
   require Logger
 
+  alias Envelope
+  alias Tracing
+  alias Correlation
+  alias BotArmyRuntime.NATS.Connection
+
   @doc """
   Send a mailbox message to a bot.
 
@@ -30,7 +35,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Mailbox do
   """
   def send(from_bot, to_bot, message_type, body, opts \\ []) do
     envelope =
-      BotArmyRuntime.NATS.Conversation.Envelope.build_mailbox(
+      Envelope.build_mailbox(
         from_bot,
         to_bot,
         message_type,
@@ -47,8 +52,8 @@ defmodule BotArmyRuntime.NATS.Conversation.Mailbox do
 
           headers =
             []
-            |> BotArmyRuntime.Tracing.inject_trace_context()
-            |> BotArmyRuntime.Correlation.inject_into_headers()
+            |> Tracing.inject_trace_context()
+            |> Correlation.inject_into_headers()
 
           Gnat.pub(conn, subject, json, headers: headers)
 

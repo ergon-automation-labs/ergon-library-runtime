@@ -24,6 +24,11 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
   require Logger
 
   alias BotArmyRuntime.Personality.Voice
+  alias Registry
+  alias Manager
+  alias Mailbox
+
+  alias BotArmyRuntime.Personality.Voice
 
   @intents [
     :check_in,
@@ -111,7 +116,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
   end
 
   defp find_gossip_partner(bot_name) do
-    case BotArmyRuntime.Registry.list_bots() do
+    case Registry.list_bots() do
       {:ok, bots} ->
         candidates =
           bots
@@ -145,7 +150,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
       "message" => message
     }
 
-    case BotArmyRuntime.NATS.Conversation.Manager.start_conversation(
+    case Manager.start_conversation(
            from_bot,
            to_bot,
            "gossip",
@@ -168,7 +173,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
       "message" => message
     }
 
-    case BotArmyRuntime.NATS.Conversation.Mailbox.send(
+    case Mailbox.send(
            from_bot,
            to_bot,
            "gossip",
