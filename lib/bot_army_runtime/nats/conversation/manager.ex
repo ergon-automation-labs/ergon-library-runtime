@@ -841,8 +841,15 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
   defp get_nats_connection do
     timeout_ms = Application.get_env(:bot_army_runtime, :nats_connection_timeout, 1000)
 
-    Connection
-    |> GenServer.call(:get_connection, timeout_ms)
+    case Process.whereis(Connection) do
+      nil ->
+        Logger.warning("[ConvManager] NATS connection process not started yet")
+        {:error, :no_connection_manager}
+
+      _ ->
+        Connection
+        |> GenServer.call(:get_connection, timeout_ms)
+    end
   rescue
     _e -> {:error, :no_connection_manager}
   end
