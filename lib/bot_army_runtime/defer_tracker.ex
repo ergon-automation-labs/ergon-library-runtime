@@ -77,7 +77,12 @@ defmodule BotArmyRuntime.DeferTracker do
   end
 
   defp prune_expired do
-    cutoff = DateTime.utc_now() |> DateTime.add(-@weeks_to_keep * 7, :day)
+    now = DateTime.utc_now()
+    days_ago = @weeks_to_keep * 7
+    cutoff_date = Date.add(now |> DateTime.to_date(), -days_ago)
+    {:ok, cutoff} = DateTime.new(cutoff_date, Time.new!(0, 0, 0))
+
+    cutoff = cutoff |> DateTime.shift_zone!("Etc/UTC")
 
     deleted =
       :ets.select_delete(@table, [

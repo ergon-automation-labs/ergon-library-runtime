@@ -20,6 +20,10 @@ defmodule BotArmyRuntime.NATS.Publisher do
 
   require Logger
 
+  alias BotArmyRuntime.NATS.CircuitBreaker
+  alias BotArmyRuntime.Tracing
+  alias BotArmyRuntime.Correlation
+
   @doc """
   Publishes a message to a NATS subject.
 
@@ -111,8 +115,8 @@ defmodule BotArmyRuntime.NATS.Publisher do
 
       headers =
         []
-        |> BotArmyRuntime.Tracing.inject_trace_context()
-        |> BotArmyRuntime.Correlation.inject_into_headers()
+        |> Tracing.inject_trace_context()
+        |> Correlation.inject_into_headers()
 
       Gnat.pub(conn, subject, json_payload, headers: headers)
 
@@ -141,7 +145,7 @@ defmodule BotArmyRuntime.NATS.Publisher do
        ) do
     # Check circuit breaker before attempting
     if cb_key && attempt == 0 do
-      case BotArmyRuntime.NATS.CircuitBreaker.allow?(cb_key) do
+      case CircuitBreaker.allow?(cb_key) do
         :ok ->
           do_try_request(
             conn,
@@ -184,11 +188,11 @@ defmodule BotArmyRuntime.NATS.Publisher do
        ) do
     case do_request(conn, subject, payload, timeout_ms) do
       {:ok, reply} ->
-        if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_success(cb_key)
+        if cb_key, do: CircuitBreaker.record_success(cb_key)
         {:ok, reply}
 
       {:error, :timeout} = err ->
-        if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_failure(cb_key, :timeout)
+        if cb_key, do: CircuitBreaker.record_failure(cb_key, :timeout)
 
         if attempt < max_retries do
           backoff = backoff_delay(retry_base_ms, attempt)
@@ -211,12 +215,12 @@ defmodule BotArmyRuntime.NATS.Publisher do
             attempt + 1
           )
         else
-          if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_failure(cb_key, :timeout)
+          if cb_key, do: CircuitBreaker.record_failure(cb_key, :timeout)
           err
         end
 
       {:error, reason} = err ->
-        if cb_key, do: BotArmyRuntime.NATS.CircuitBreaker.record_failure(cb_key, reason)
+        if cb_key, do: CircuitBreaker.record_failure(cb_key, reason)
         err
     end
   end
@@ -227,8 +231,8 @@ defmodule BotArmyRuntime.NATS.Publisher do
 
       headers =
         []
-        |> BotArmyRuntime.Tracing.inject_trace_context()
-        |> BotArmyRuntime.Correlation.inject_into_headers()
+        |> Tracing.inject_trace_context()
+        |> Correlation.inject_into_headers()
 
       case Gnat.request(conn, subject, json_payload,
              receive_timeout: timeout_ms,
@@ -284,7 +288,7 @@ defmodule BotArmyRuntime.NATS.Publisher do
   defp log_publish_success(subject, _payload) do
     Logger.debug("[NATS] Published message",
       subject: subject,
-      correlation_id: BotArmyRuntime.Correlation.current()
+      correlation_id: Correlation.current()
     )
   end
 

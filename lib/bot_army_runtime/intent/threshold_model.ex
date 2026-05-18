@@ -245,8 +245,8 @@ defmodule BotArmyRuntime.Intent.ThresholdModel do
             end
 
           {:error, reason} ->
-            Logger.warning("[ThresholdModel] Random roll failed: #{inspect(reason)}, deferring")
-            {:ok, :defer, build_details(score, nil, {:random_error, reason}, score_details)}
+            Logger.warning("[ThresholdModel] Random roll failed: #{inspect(reason)}, aborting")
+            {:ok, :abort, build_details(score, nil, {:random_error, reason}, score_details)}
         end
 
       true ->
