@@ -215,7 +215,8 @@ defmodule BotArmyRuntime.NATS.Connection do
   defp connect(servers, ping_interval) do
     case Gnat.start_link(%{
            servers: servers,
-           ping_interval: ping_interval
+           ping_interval: ping_interval,
+           no_responders: true
          }) do
       {:ok, pid} ->
         {:ok, pid}
