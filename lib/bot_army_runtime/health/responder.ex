@@ -178,18 +178,20 @@ defmodule BotArmyRuntime.Health.Responder do
   end
 
   defp check_nats do
-    case Process.whereis(BotArmyRuntime.NATS.Connection) do
-      nil ->
-        :error
+    try do
+      case Process.whereis(BotArmyRuntime.NATS.Connection) do
+        nil ->
+          :error
 
-      _ ->
-        case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
-          {:ok, _} -> :ok
-          {:error, _} -> :error
-        end
+        _ ->
+          case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
+            {:ok, _} -> :ok
+            {:error, _} -> :error
+          end
+      end
+    rescue
+      _ -> :error
     end
-  rescue
-    _ -> :error
   end
 
   defp check_db(nil), do: :skip

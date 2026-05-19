@@ -19,7 +19,7 @@ defmodule BotArmyRuntime.TracingTest do
 
       assert is_list(result)
       # Custom headers should still be present
-      assert {"x-custom", "value"} in result or length(result) >= 1
+      assert {"x-custom", "value"} in result or result != []
     end
   end
 

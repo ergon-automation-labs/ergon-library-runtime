@@ -246,15 +246,13 @@ defmodule BotArmyRuntime.GossipPollAffinity do
       [{top_key, top_v} | rest] ->
         base_v = Map.get(weights, baseline, top_v)
 
-        cond do
-          baseline == top_key ->
-            case rest do
-              [{_k2, second} | _] -> top_v - second
-              _ -> 1.0
-            end
-
-          true ->
-            top_v - base_v
+        if baseline == top_key do
+          case rest do
+            [{_k2, second} | _] -> top_v - second
+            _ -> 1.0
+          end
+        else
+          top_v - base_v
         end
     end
   end

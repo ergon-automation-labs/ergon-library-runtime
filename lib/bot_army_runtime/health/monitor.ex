@@ -216,15 +216,17 @@ defmodule BotArmyRuntime.Health.Monitor do
   # Helpers
 
   defp get_nats_connection do
-    case Process.whereis(BotArmyRuntime.NATS.Connection) do
-      nil ->
-        {:error, :no_connection_manager}
+    try do
+      case Process.whereis(BotArmyRuntime.NATS.Connection) do
+        nil ->
+          {:error, :no_connection_manager}
 
-      _ ->
-        GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000)
+        _ ->
+          GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000)
+      end
+    rescue
+      _ -> {:error, :no_connection_manager}
     end
-  rescue
-    _ -> {:error, :no_connection_manager}
   end
 
   defp extract_bot_id("bot.army.health." <> bot_id), do: bot_id

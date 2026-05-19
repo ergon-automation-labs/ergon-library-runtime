@@ -64,7 +64,7 @@ defmodule BotArmyRuntime.GtdPollAllocatorTest do
       snapshot = %{"project" => ["p1", "p2"]}
       result = GtdPollAllocator.allocate(snapshot, :synapse, 3)
 
-      assert length(result) >= 1
+      assert result != []
       assert Enum.all?(result, fn alloc -> alloc["item_type"] == "project" end)
     end
 
@@ -102,7 +102,7 @@ defmodule BotArmyRuntime.GtdPollAllocatorTest do
       result = GtdPollAllocator.allocate(snapshot, :unknown_profile, 3)
 
       assert is_list(result)
-      assert length(result) >= 1
+      assert result != []
     end
   end
 
@@ -127,7 +127,7 @@ defmodule BotArmyRuntime.GtdPollAllocatorTest do
       snapshot = %{"task" => ["email-triage-bot-v1", "gtd-poll-fix-v2"]}
       result = GtdPollAllocator.allocate(snapshot, :gtd, 3)
 
-      assert length(result) >= 1
+      assert result != []
       assert Enum.all?(result, fn alloc -> is_binary(alloc["item_id"]) end)
     end
 
