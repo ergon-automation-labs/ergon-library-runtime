@@ -26,10 +26,10 @@ defmodule BotArmyRuntime.NATS.Conversation.Manager do
   use GenServer
   require Logger
 
-  alias Envelope
-  alias Tracing
-  alias Correlation
-  alias Connection
+  alias BotArmyRuntime.NATS.Conversation.Envelope
+  alias BotArmyRuntime.Tracing
+  alias BotArmyRuntime.Correlation
+  alias BotArmyRuntime.NATS.Connection
 
   # ───────────────────────────────────────────────────────────────────────────
   # Public API

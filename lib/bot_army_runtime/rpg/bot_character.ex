@@ -1,6 +1,7 @@
 defmodule BotArmyRuntime.RPG.BotCharacter do
-  alias Tenant
-  alias Publisher
+  alias BotArmyRuntime.Tenant
+  alias BotArmyRuntime.NATS.Publisher
+
   @moduledoc """
   Shared helper for bot character provisioning via NATS.
 

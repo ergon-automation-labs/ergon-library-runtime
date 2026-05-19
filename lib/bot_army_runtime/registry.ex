@@ -21,8 +21,8 @@ defmodule BotArmyRuntime.Registry do
 
   use GenServer
 
-  alias Connection
-  alias Reply
+  alias BotArmyRuntime.NATS.Connection
+  alias BotArmyRuntime.NATS.Reply
   require Logger
 
   @heartbeat_interval_ms 30_000
