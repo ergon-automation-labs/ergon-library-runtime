@@ -16,8 +16,15 @@ defmodule BotArmyRuntime.Repo.Migrations.CreateHeartbeats do
   use Ecto.Migration
 
   def change do
+    execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+
     create table(:heartbeats, primary_key: false) do
-      add(:id, :binary_id, primary_key: true)
+      add(:id, :binary_id,
+        primary_key: true,
+        null: false,
+        default: fragment("uuid_generate_v4()")
+      )
+
       add(:bot_id, :string, null: false)
       add(:service, :string, null: false)
       add(:tenant_id, :binary_id, null: false)

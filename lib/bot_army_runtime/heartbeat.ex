@@ -169,8 +169,11 @@ defmodule BotArmy.Heartbeat do
   end
 
   defp do_persist(repo, attrs, start_mono, telemetry?) do
+    id = Ecto.UUID.generate()
+
     query = """
     INSERT INTO heartbeats (
+      id,
       bot_id,
       service,
       tenant_id,
@@ -184,7 +187,7 @@ defmodule BotArmy.Heartbeat do
       inserted_at,
       updated_at
     )
-    VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, $8, $9::jsonb, $10, timezone('UTC', now()), timezone('UTC', now()))
+    VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8, $9, $10::jsonb, $11, timezone('UTC', now()), timezone('UTC', now()))
     ON CONFLICT (service, tenant_id)
     DO UPDATE SET
       bot_id = EXCLUDED.bot_id,
@@ -200,6 +203,7 @@ defmodule BotArmy.Heartbeat do
     """
 
     params = [
+      id,
       attrs.bot_id,
       attrs.service,
       attrs.tenant_id,
