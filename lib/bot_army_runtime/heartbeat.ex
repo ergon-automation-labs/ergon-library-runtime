@@ -169,7 +169,7 @@ defmodule BotArmy.Heartbeat do
   end
 
   defp do_persist(repo, attrs, start_mono, telemetry?) do
-    id = Ecto.UUID.generate()
+    {:ok, id} = Ecto.UUID.dump(Ecto.UUID.generate())
 
     query = """
     INSERT INTO heartbeats (
