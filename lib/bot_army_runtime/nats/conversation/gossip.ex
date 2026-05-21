@@ -24,11 +24,9 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
   require Logger
 
   alias BotArmyRuntime.Personality.Voice
-  alias Registry
+  alias BotArmyRuntime.Registry
   alias Manager
   alias Mailbox
-
-  alias BotArmyRuntime.Personality.Voice
 
   @intents [
     :check_in,
