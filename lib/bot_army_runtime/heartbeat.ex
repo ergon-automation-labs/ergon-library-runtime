@@ -276,9 +276,7 @@ defmodule BotArmy.Heartbeat do
   end
 
   defp query_row(repo, service, tenant_id) do
-    unless PersonalityRepo.available?(repo) do
-      {:error, nil}
-    else
+    if PersonalityRepo.available?(repo) do
       query = """
       SELECT
         id,
@@ -344,6 +342,8 @@ defmodule BotArmy.Heartbeat do
         _ ->
           {:error, nil}
       end
+    else
+      {:error, nil}
     end
   end
 

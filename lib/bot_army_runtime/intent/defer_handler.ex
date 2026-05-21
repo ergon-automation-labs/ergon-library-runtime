@@ -155,8 +155,7 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
       entries =
         summary
         |> Enum.take(3)
-        |> Enum.map(fn {k, v} -> "#{k}=#{inspect(v)}" end)
-        |> Enum.join(", ")
+        |> Enum.map_join(", ", fn {k, v} -> "#{k}=#{inspect(v)}" end)
 
       "#{entry_count} observations (#{entries})"
     else

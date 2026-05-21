@@ -42,7 +42,9 @@ defmodule BotArmy.Memory do
       repo = PersonalityRepo.resolve(Keyword.get(opts, :repo))
       limit = Keyword.get(opts, :limit, 10)
 
-      unless PersonalityRepo.available?(repo) do
+      if PersonalityRepo.available?(repo) do
+        do_append(repo, normalized, limit, start_mono, telemetry?)
+      else
         if telemetry? && start_mono do
           Observability.memory_append_complete(
             start_mono,
@@ -54,8 +56,6 @@ defmodule BotArmy.Memory do
         end
 
         :skipped
-      else
-        do_append(repo, normalized, limit, start_mono, telemetry?)
       end
     end
   end
@@ -133,7 +133,9 @@ defmodule BotArmy.Memory do
     kind = Keyword.get(opts, :kind)
     repo = PersonalityRepo.resolve(Keyword.get(opts, :repo))
 
-    unless PersonalityRepo.available?(repo) do
+    if PersonalityRepo.available?(repo) do
+      do_clear(repo, scope, tenant_id, kind, start_mono, telemetry?)
+    else
       if telemetry? && start_mono do
         Observability.memory_clear_complete(
           start_mono,
@@ -145,8 +147,6 @@ defmodule BotArmy.Memory do
       end
 
       :skipped
-    else
-      do_clear(repo, scope, tenant_id, kind, start_mono, telemetry?)
     end
   end
 

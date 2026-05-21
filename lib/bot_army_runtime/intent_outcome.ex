@@ -41,7 +41,9 @@ defmodule BotArmy.IntentOutcome do
     with {:ok, normalized} <- normalize_record_attrs(attrs) do
       repo = PersonalityRepo.resolve(Keyword.get(opts, :repo))
 
-      unless PersonalityRepo.available?(repo) do
+      if PersonalityRepo.available?(repo) do
+        do_record(repo, normalized, start_mono, telemetry?)
+      else
         if telemetry? && start_mono do
           :telemetry.execute(
             [:bot_army, :intent, :outcome, :record],
@@ -51,8 +53,6 @@ defmodule BotArmy.IntentOutcome do
         end
 
         :skipped
-      else
-        do_record(repo, normalized, start_mono, telemetry?)
       end
     end
   end
@@ -68,10 +68,10 @@ defmodule BotArmy.IntentOutcome do
   def resolve(intent_id, outcome, metadata \\ %{}, opts \\ []) when is_binary(intent_id) do
     repo = PersonalityRepo.resolve(Keyword.get(opts, :repo))
 
-    unless PersonalityRepo.available?(repo) do
-      :skipped
-    else
+    if PersonalityRepo.available?(repo) do
       do_resolve(repo, intent_id, outcome, metadata)
+    else
+      :skipped
     end
   end
 

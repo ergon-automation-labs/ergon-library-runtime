@@ -114,8 +114,7 @@ defmodule BotArmyRuntime.RPG.BotCharacter do
     |> String.replace_prefix("bot_army_", "")
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp normalize_bot_id(bot_id) when is_binary(bot_id), do: bot_id
