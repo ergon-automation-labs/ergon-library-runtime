@@ -189,10 +189,12 @@ defmodule BotArmyRuntime.NATS.Publisher do
     case do_request(conn, subject, payload, timeout_ms) do
       {:ok, reply} ->
         if cb_key, do: CircuitBreaker.record_success(cb_key)
+        emit_retry_telemetry(subject, attempt, :success, nil, cb_key)
         {:ok, reply}
 
       {:error, :timeout} = err ->
         if cb_key, do: CircuitBreaker.record_failure(cb_key, :timeout)
+        emit_retry_telemetry(subject, attempt, :timeout, :timeout, cb_key)
 
         if attempt < max_retries do
           backoff = backoff_delay(retry_base_ms, attempt)
@@ -221,6 +223,7 @@ defmodule BotArmyRuntime.NATS.Publisher do
 
       {:error, reason} = err ->
         if cb_key, do: CircuitBreaker.record_failure(cb_key, reason)
+        emit_retry_telemetry(subject, attempt, :error, reason, cb_key)
         err
     end
   end
@@ -266,6 +269,14 @@ defmodule BotArmyRuntime.NATS.Publisher do
         log_request_exception(subject, e)
         {:error, {:exception, Exception.message(e)}}
     end
+  end
+
+  defp emit_retry_telemetry(subject, attempt, outcome, reason, cb_key) do
+    :telemetry.execute(
+      [:bot_army_runtime, :nats, :retry, :attempt],
+      %{attempt_number: attempt},
+      %{subject: subject, outcome: outcome, reason: reason, circuit_breaker_key: cb_key}
+    )
   end
 
   defp backoff_delay(base_ms, attempt) do

@@ -21,6 +21,7 @@ defmodule BotArmyRuntime.Telemetry do
   def init(_opts) do
     attach_ecto_handlers()
     attach_nats_handlers()
+    attach_retry_handlers()
     attach_error_handlers()
 
     Logger.info("[Telemetry] Initialized")
@@ -61,6 +62,15 @@ defmodule BotArmyRuntime.Telemetry do
       "nats-publish-error",
       [:nats, :pub, :exception],
       &handle_nats_error/4,
+      nil
+    )
+  end
+
+  defp attach_retry_handlers do
+    safe_attach(
+      "retry-attempt",
+      [:bot_army_runtime, :nats, :retry, :attempt],
+      &handle_retry_attempt/4,
       nil
     )
   end
@@ -121,6 +131,25 @@ defmodule BotArmyRuntime.Telemetry do
       publish_time_ms: publish_time_ms,
       error: inspect(metadata[:error])
     )
+  end
+
+  def handle_retry_attempt(_event, measurements, metadata, _config) do
+    payload = %{
+      "schema_version" => "1.0",
+      "event_type" => "runtime.retry.attempt",
+      "occurred_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "subject" => metadata[:subject],
+      "attempt_number" => measurements.attempt_number,
+      "outcome" => Atom.to_string(metadata[:outcome]),
+      "reason" => inspect(metadata[:reason]),
+      "circuit_breaker_key" => metadata[:circuit_breaker_key]
+    }
+
+    try do
+      BotArmyRuntime.NATS.Publisher.publish("events.runtime.retry.attempt", payload)
+    rescue
+      _ -> :ok
+    end
   end
 
   @doc false
