@@ -296,7 +296,7 @@ defmodule BotArmyRuntime.Intent.ThresholdModel do
   defp config_random_timeout, do: get_in_config([:random_timeout_ms], @default_random_timeout_ms)
 
   defp get_in_config([key], default) do
-    config = Application.get_env(:bot_army_runtime, :threshold_model, [])
+    config = Application.get_env(:bot_army_library_runtime, :threshold_model, [])
     Keyword.get(config, key, default)
   end
 end

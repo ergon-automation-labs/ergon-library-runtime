@@ -75,7 +75,7 @@ defmodule BotArmyRuntime.Application do
   end
 
   defp metrics_endpoint do
-    port = Application.get_env(:bot_army_runtime, :metrics_port, 9090)
+    port = Application.get_env(:bot_army_library_runtime, :metrics_port, 9090)
 
     {Plug.Cowboy, scheme: :http, plug: BotArmyRuntime.Metrics.Endpoint, options: [port: port]}
   end

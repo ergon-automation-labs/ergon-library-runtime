@@ -98,7 +98,7 @@ defmodule BotArmyRuntime.Intent.DeferRateLimiter do
   end
 
   defp min_interval_ms do
-    Application.get_env(:bot_army_runtime, :defer_handler, [])
+    Application.get_env(:bot_army_library_runtime, :defer_handler, [])
     |> Keyword.get(:min_interval_ms, 30 * 60 * 1000)
   end
 end

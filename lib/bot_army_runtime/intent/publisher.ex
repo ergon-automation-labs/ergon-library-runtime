@@ -299,12 +299,12 @@ defmodule BotArmyRuntime.Intent.Publisher do
   end
 
   defp veto_timeout_ms do
-    config = Application.get_env(:bot_army_runtime, :intent, [])
+    config = Application.get_env(:bot_army_library_runtime, :intent, [])
     Keyword.get(config, :veto_timeout_ms, @default_veto_timeout_ms)
   end
 
   defp enabled? do
-    config = Application.get_env(:bot_army_runtime, :intent, [])
+    config = Application.get_env(:bot_army_library_runtime, :intent, [])
     Keyword.get(config, :enabled, true)
   end
 
@@ -316,7 +316,7 @@ defmodule BotArmyRuntime.Intent.Publisher do
   end
 
   defp get_connection do
-    timeout_ms = Application.get_env(:bot_army_runtime, :nats_connection_timeout, 1000)
+    timeout_ms = Application.get_env(:bot_army_library_runtime, :nats_connection_timeout, 1000)
 
     BotArmyRuntime.NATS.Connection
     |> GenServer.call(:get_connection, timeout_ms)

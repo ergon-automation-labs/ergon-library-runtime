@@ -186,18 +186,18 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
   end
 
   defp roll_chance do
-    prob = Application.get_env(:bot_army_runtime, :gossip, [])
+    prob = Application.get_env(:bot_army_library_runtime, :gossip, [])
     prob = Keyword.get(prob, :probability_per_cycle, 0.05)
     :rand.uniform() < prob
   end
 
   defp enabled? do
-    config = Application.get_env(:bot_army_runtime, :gossip, [])
+    config = Application.get_env(:bot_army_library_runtime, :gossip, [])
     Keyword.get(config, :enabled, true)
   end
 
   defp only_when_idle? do
-    config = Application.get_env(:bot_army_runtime, :gossip, [])
+    config = Application.get_env(:bot_army_library_runtime, :gossip, [])
     Keyword.get(config, :only_when_idle, true)
   end
 end

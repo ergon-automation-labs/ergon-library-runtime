@@ -309,17 +309,17 @@ defmodule BotArmyRuntime.Intent.VetoListener do
   end
 
   defp queue_group do
-    config = Application.get_env(:bot_army_runtime, :veto_listener, [])
+    config = Application.get_env(:bot_army_library_runtime, :veto_listener, [])
     Keyword.get(config, :queue_group, @default_queue_group)
   end
 
   defp log_size do
-    config = Application.get_env(:bot_army_runtime, :veto_listener, [])
+    config = Application.get_env(:bot_army_library_runtime, :veto_listener, [])
     Keyword.get(config, :log_size, @default_log_size)
   end
 
   defp get_connection do
-    timeout_ms = Application.get_env(:bot_army_runtime, :nats_connection_timeout, 1_000)
+    timeout_ms = Application.get_env(:bot_army_library_runtime, :nats_connection_timeout, 1_000)
 
     BotArmyRuntime.NATS.Connection
     |> GenServer.call(:get_connection, timeout_ms)

@@ -9,7 +9,7 @@ defmodule BotArmyRuntime.Personality.Repo do
   """
   @spec resolve(module() | nil) :: module()
   def resolve(nil) do
-    Application.get_env(:bot_army_runtime, :personality_repo) ||
+    Application.get_env(:bot_army_library_runtime, :personality_repo) ||
       first_bot_repo() ||
       BotArmyRuntime.Ecto.Repo
   end

@@ -169,7 +169,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Mailbox do
   end
 
   defp get_nats_connection do
-    timeout_ms = Application.get_env(:bot_army_runtime, :nats_connection_timeout, 1000)
+    timeout_ms = Application.get_env(:bot_army_library_runtime, :nats_connection_timeout, 1000)
 
     BotArmyRuntime.NATS.Connection
     |> GenServer.call(:get_connection, timeout_ms)

@@ -264,17 +264,17 @@ defmodule BotArmyRuntime.Intent.ReflectionJob do
   end
 
   defp config_interval do
-    Application.get_env(:bot_army_runtime, :reflection_job, [])
+    Application.get_env(:bot_army_library_runtime, :reflection_job, [])
     |> Keyword.get(:interval_ms, @default_interval_ms)
   end
 
   defp config_window_hours do
-    Application.get_env(:bot_army_runtime, :reflection_job, [])
+    Application.get_env(:bot_army_library_runtime, :reflection_job, [])
     |> Keyword.get(:window_hours, @default_window_hours)
   end
 
   defp config_min_sample_size do
-    Application.get_env(:bot_army_runtime, :reflection_job, [])
+    Application.get_env(:bot_army_library_runtime, :reflection_job, [])
     |> Keyword.get(:min_sample_size, @default_min_sample_size)
   end
 end

@@ -191,17 +191,17 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
   end
 
   defp enabled? do
-    Application.get_env(:bot_army_runtime, :defer_handler, [])
+    Application.get_env(:bot_army_library_runtime, :defer_handler, [])
     |> Keyword.get(:enabled, true)
   end
 
   defp config_default_timeout_ms do
-    Application.get_env(:bot_army_runtime, :defer_handler, [])
+    Application.get_env(:bot_army_library_runtime, :defer_handler, [])
     |> Keyword.get(:timeout_ms, 15_000)
   end
 
   defp config_default_llm_intent do
-    Application.get_env(:bot_army_runtime, :defer_handler, [])
+    Application.get_env(:bot_army_library_runtime, :defer_handler, [])
     |> Keyword.get(:default_llm_intent, "ask")
   end
 end

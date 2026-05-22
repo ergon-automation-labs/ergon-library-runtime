@@ -279,12 +279,12 @@ defmodule BotArmyRuntime.Intent.AccumulatedContext do
   end
 
   defp config_window_size do
-    config = Application.get_env(:bot_army_runtime, :accumulated_context, [])
+    config = Application.get_env(:bot_army_library_runtime, :accumulated_context, [])
     Keyword.get(config, :default_window_size, @default_window_size)
   end
 
   defp config_prune_interval do
-    config = Application.get_env(:bot_army_runtime, :accumulated_context, [])
+    config = Application.get_env(:bot_army_library_runtime, :accumulated_context, [])
     Keyword.get(config, :prune_interval_ms, @prune_interval_ms)
   end
 

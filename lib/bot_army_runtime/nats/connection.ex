@@ -93,7 +93,7 @@ defmodule BotArmyRuntime.NATS.Connection do
 
   @impl true
   def init(opts) do
-    nats_env = Application.get_env(:bot_army_runtime, :nats, []) || []
+    nats_env = Application.get_env(:bot_army_library_runtime, :nats, []) || []
 
     state = %{
       servers: pick_servers(opts, nats_env),
