@@ -16,7 +16,7 @@ defmodule BotArmyRuntime.Intent.ReflectionJob do
 
   ## Configuration
 
-      config :bot_army_runtime, :reflection_job,
+      config :bot_army_library_runtime, :reflection_job,
         interval_ms: 30 * 60 * 1000,   # 30 minutes
         window_hours: 24,                # look at last 24h of outcomes
         min_sample_size: 3              # need at least 3 resolved outcomes

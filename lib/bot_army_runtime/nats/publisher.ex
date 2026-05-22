@@ -273,7 +273,7 @@ defmodule BotArmyRuntime.NATS.Publisher do
 
   defp emit_retry_telemetry(subject, attempt, outcome, reason, cb_key) do
     :telemetry.execute(
-      [:bot_army_runtime, :nats, :retry, :attempt],
+      [:bot_army_library_runtime, :nats, :retry, :attempt],
       %{attempt_number: attempt},
       %{subject: subject, outcome: outcome, reason: reason, circuit_breaker_key: cb_key}
     )

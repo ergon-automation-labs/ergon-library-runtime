@@ -14,7 +14,7 @@ defmodule BotArmyRuntime.NATS.Connection do
 
   Configure in `config.exs`:
 
-      config :bot_army_runtime, :nats,
+      config :bot_army_library_runtime, :nats,
         servers: [{"localhost", 4223}],
         ping_interval: 30_000,
         max_reconnect_attempts: 10,

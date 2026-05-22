@@ -55,7 +55,7 @@ defmodule BotArmyRuntime.Intent.Publisher do
 
   ## Configuration
 
-      config :bot_army_runtime, :intent,
+      config :bot_army_library_runtime, :intent,
         veto_timeout_ms: 2_000,
         veto_queue_group: "intent_veto",
         enabled: true

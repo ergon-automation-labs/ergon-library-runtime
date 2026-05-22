@@ -35,7 +35,7 @@ defmodule BotArmyRuntime.Intent.AccumulatedContext do
 
   ## Configuration
 
-      config :bot_army_runtime, :accumulated_context,
+      config :bot_army_library_runtime, :accumulated_context,
         default_window_size: 100,   # Max entries per bot
         prune_interval_ms: 30_000   # How often to prune stale entries
 

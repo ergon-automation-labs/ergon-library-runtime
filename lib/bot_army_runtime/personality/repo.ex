@@ -27,7 +27,7 @@ defmodule BotArmyRuntime.Personality.Repo do
     |> Enum.find_value(fn {app, _, _} ->
       app_str = Atom.to_string(app)
 
-      if String.starts_with?(app_str, "bot_army_") and app != :bot_army_runtime do
+      if String.starts_with?(app_str, "bot_army_") and app != :bot_army_library_runtime do
         case Application.get_env(app, :ecto_repos, []) do
           [repo | _] -> repo
           _ -> nil

@@ -69,7 +69,7 @@ defmodule BotArmyRuntime.Telemetry do
   defp attach_retry_handlers do
     safe_attach(
       "retry-attempt",
-      [:bot_army_runtime, :nats, :retry, :attempt],
+      [:bot_army_library_runtime, :nats, :retry, :attempt],
       &handle_retry_attempt/4,
       nil
     )

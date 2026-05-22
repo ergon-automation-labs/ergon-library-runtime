@@ -35,7 +35,7 @@ defmodule BotArmyRuntime.Application do
         {BotArmyRuntime.Telemetry, []},
 
         # NATS connection (required for message bus communication)
-        # Configuration read from :bot_army_runtime, :nats in config/runtime.exs
+        # Configuration read from :bot_army_library_runtime, :nats in config/runtime.exs
         {BotArmyRuntime.NATS.Connection, []},
 
         # NATS message deduplication (ETS sliding window)
@@ -80,7 +80,11 @@ defmodule BotArmyRuntime.Application do
     {Plug.Cowboy, scheme: :http, plug: BotArmyRuntime.Metrics.Endpoint, options: [port: port]}
   end
 
-  @auto_start_services Application.compile_env(:bot_army_runtime, :auto_start_services, false)
+  @auto_start_services Application.compile_env(
+                         :bot_army_library_runtime,
+                         :auto_start_services,
+                         false
+                       )
 
   defp maybe_add_metrics_endpoint(children) do
     if @auto_start_services do

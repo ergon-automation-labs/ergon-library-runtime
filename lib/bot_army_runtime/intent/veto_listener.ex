@@ -44,7 +44,7 @@ defmodule BotArmyRuntime.Intent.VetoListener do
 
   ## Configuration
 
-      config :bot_army_runtime, :veto_listener,
+      config :bot_army_library_runtime, :veto_listener,
         subscribe_timeout: 5_000,
         queue_group: "veto_listener",
         log_size: 100

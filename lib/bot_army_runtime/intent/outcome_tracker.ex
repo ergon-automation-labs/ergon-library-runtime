@@ -17,7 +17,7 @@ defmodule BotArmyRuntime.Intent.OutcomeTracker do
 
   ## Configuration
 
-      config :bot_army_runtime, :outcome_tracker,
+      config :bot_army_library_runtime, :outcome_tracker,
         subscribe_subject: "events.bot_army.intent.>"
   """
 

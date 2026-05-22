@@ -8,7 +8,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
 
   ## Configuration
 
-      config :bot_army_runtime, :gossip,
+      config :bot_army_library_runtime, :gossip,
         enabled: true,
         probability_per_cycle: 0.05,   # 5% chance per heartbeat
         only_when_idle: true,          # Skip if bot has pending work

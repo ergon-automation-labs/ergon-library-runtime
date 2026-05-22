@@ -52,7 +52,7 @@ defmodule BotArmyRuntime.Intent.ThresholdModel do
 
   ## Configuration
 
-      config :bot_army_runtime, :threshold_model,
+      config :bot_army_library_runtime, :threshold_model,
         default_dice: "1d20",
         random_subject: "bridge.random.roll",
         random_timeout_ms: 2_000
