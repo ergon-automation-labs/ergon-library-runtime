@@ -11,9 +11,9 @@ defmodule BotArmyRuntime.Ecto.Repo do
 
   ## Configuration
 
-  Configure in `config.exs`:
+  Configure in the bot's runtime.exs:
 
-      config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
+      config :bot_army_library_runtime, BotArmyRuntime.Ecto.Repo,
         database: "bot_army_dev",
         username: "postgres",
         password: "postgres",
@@ -25,7 +25,7 @@ defmodule BotArmyRuntime.Ecto.Repo do
 
   For production, pass these via runtime configuration or environment variables:
 
-      config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
+      config :bot_army_library_runtime, BotArmyRuntime.Ecto.Repo,
         database: {:system, "DB_NAME"},
         username: {:system, "DB_USER"},
         password: {:system, "DB_PASSWORD"},
@@ -44,10 +44,13 @@ defmodule BotArmyRuntime.Ecto.Repo do
 
       config :bot_army_gtd, BotArmyGTD.Repo,
         database: "bot_army_gtd_dev"
+
+  Migrations are run from the bot's own Release module, not from this Repo.
+  Each bot calls Ecto.Migrator.run with its own migrations_path.
   """
 
   use Ecto.Repo,
-    otp_app: :bot_army_runtime,
+    otp_app: :bot_army_library_runtime,
     adapter: Ecto.Adapters.Postgres
 
   @doc """
@@ -89,8 +92,8 @@ defmodule BotArmyRuntime.Ecto.Repo do
 
   @doc false
   defp migrations_path do
-    # Bot services will provide their own migrations path
-    # This is a default that can be overridden
-    Application.app_dir(:bot_army_runtime, "priv/repo/migrations")
+    # Each bot runs migrations from its own priv/repo/migrations.
+    # This fallback points to the library's own priv dir.
+    Application.app_dir(:bot_army_library_runtime, "priv/repo/migrations")
   end
 end
