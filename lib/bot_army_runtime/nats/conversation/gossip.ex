@@ -25,8 +25,8 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
 
   alias BotArmyRuntime.Personality.Voice
   alias BotArmyRuntime.Registry
-  alias Manager
-  alias Mailbox
+  alias BotArmyRuntime.NATS.Conversation.Manager
+  alias BotArmyRuntime.NATS.Conversation.Mailbox
 
   @intents [
     :check_in,
