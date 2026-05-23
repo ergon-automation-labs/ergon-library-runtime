@@ -17,10 +17,9 @@ defmodule BotArmyRuntime.NATS.Conversation.Mailbox do
 
   require Logger
 
-  alias Envelope
-  alias Tracing
-  alias Correlation
-  alias BotArmyRuntime.NATS.Connection
+  alias BotArmyRuntime.NATS.Conversation.Envelope
+  alias BotArmyRuntime.Tracing
+  alias BotArmyRuntime.Correlation
 
   @doc """
   Send a mailbox message to a bot.
