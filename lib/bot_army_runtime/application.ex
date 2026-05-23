@@ -13,6 +13,12 @@ defmodule BotArmyRuntime.Application do
 
   use Application
 
+  @env Mix.env()
+
+  defp enabled? do
+    @env != :test
+  end
+
   @impl true
   def start(_type, _args) do
     # Note: BotArmyRuntime.Ecto.Repo is NOT started here.
@@ -21,54 +27,58 @@ defmodule BotArmyRuntime.Application do
     # independent per bot and allows tests to run without database errors.
 
     children =
-      [
-        # Registry for NATS connection status broadcasts
-        {Registry, keys: :duplicate, name: BotArmyRuntime.NATS.ConnectionRegistry},
+      if enabled?() do
+        [
+          # Registry for NATS connection status broadcasts
+          {Registry, keys: :duplicate, name: BotArmyRuntime.NATS.ConnectionRegistry},
 
-        # Registry for circuit breaker state (one per breaker key)
-        {Registry, keys: :unique, name: BotArmyRuntime.NATS.CircuitBreakerRegistry},
+          # Registry for circuit breaker state (one per breaker key)
+          {Registry, keys: :unique, name: BotArmyRuntime.NATS.CircuitBreakerRegistry},
 
-        # PromEx metrics collection
-        {BotArmyRuntime.PromEx, []},
+          # PromEx metrics collection
+          {BotArmyRuntime.PromEx, []},
 
-        # Telemetry handlers for observability
-        {BotArmyRuntime.Telemetry, []},
+          # Telemetry handlers for observability
+          {BotArmyRuntime.Telemetry, []},
 
-        # NATS connection (required for message bus communication)
-        # Configuration read from :bot_army_library_runtime, :nats in config/runtime.exs
-        {BotArmyRuntime.NATS.Connection, []},
+          # NATS connection (required for message bus communication)
+          # Configuration read from :bot_army_library_runtime, :nats in config/runtime.exs
+          {BotArmyRuntime.NATS.Connection, []},
 
-        # NATS message deduplication (ETS sliding window)
-        {BotArmyRuntime.NATS.Dedup, []},
+          # NATS message deduplication (ETS sliding window)
+          {BotArmyRuntime.NATS.Dedup, []},
 
-        # Defer rate limiter (ETS-based, prevents spamming LLM on repeated defers)
-        {BotArmyRuntime.Intent.DeferRateLimiter, []},
+          # Defer rate limiter (ETS-based, prevents spamming LLM on repeated defers)
+          {BotArmyRuntime.Intent.DeferRateLimiter, []},
 
-        # Defer tracker (ETS-based, counts check-in defers per user/task/week)
-        {BotArmyRuntime.DeferTracker, []},
+          # Defer tracker (ETS-based, counts check-in defers per user/task/week)
+          {BotArmyRuntime.DeferTracker, []},
 
-        # NATS circuit breaker (per-key failure tracking for resilience)
-        {BotArmyRuntime.NATS.CircuitBreaker, []},
+          # NATS circuit breaker (per-key failure tracking for resilience)
+          {BotArmyRuntime.NATS.CircuitBreaker, []},
 
-        # Service discovery registry (in-memory bot registry with heartbeat detection)
-        {BotArmyRuntime.Registry, []},
+          # Service discovery registry (in-memory bot registry with heartbeat detection)
+          {BotArmyRuntime.Registry, []},
 
-        # Health monitor (stale bot detection)
-        {BotArmyRuntime.Health.Monitor, []},
+          # Health monitor (stale bot detection)
+          {BotArmyRuntime.Health.Monitor, []},
 
-        # Conversation manager (cross-bot request/response + mailbox)
-        {BotArmyRuntime.NATS.Conversation.Manager, []},
+          # Conversation manager (cross-bot request/response + mailbox)
+          {BotArmyRuntime.NATS.Conversation.Manager, []},
 
-        # Outcome tracker (captures intent lifecycle events from NATS)
-        {BotArmyRuntime.Intent.OutcomeTracker, []},
+          # Outcome tracker (captures intent lifecycle events from NATS)
+          {BotArmyRuntime.Intent.OutcomeTracker, []},
 
-        # Reflection job (periodic outcome analysis and weight adjustment)
-        {BotArmyRuntime.Intent.ReflectionJob, []},
+          # Reflection job (periodic outcome analysis and weight adjustment)
+          {BotArmyRuntime.Intent.ReflectionJob, []},
 
-        # Dynamic supervisor for per-bot AccumulatedContext processes
-        {DynamicSupervisor, strategy: :one_for_one, name: BotArmyRuntime.DynamicSupervisor}
-      ]
-      |> maybe_add_metrics_endpoint()
+          # Dynamic supervisor for per-bot AccumulatedContext processes
+          {DynamicSupervisor, strategy: :one_for_one, name: BotArmyRuntime.DynamicSupervisor}
+        ]
+        |> maybe_add_metrics_endpoint()
+      else
+        []
+      end
 
     opts = [strategy: :one_for_one, name: BotArmyRuntime.Supervisor]
     Supervisor.start_link(children, opts)
