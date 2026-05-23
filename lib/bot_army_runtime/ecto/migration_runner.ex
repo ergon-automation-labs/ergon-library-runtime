@@ -57,20 +57,50 @@ defmodule BotArmyRuntime.Ecto.MigrationRunner do
     direction = Keyword.get(opts, :direction, :up)
 
     load_app(app_module)
+    Application.load(:bot_army_library_runtime)
 
+    # Run runtime library migrations first (includes shared tables like heartbeats)
+    runtime_result =
+      run_migrations(
+        repo_module,
+        :bot_army_library_runtime,
+        "bot_army_library_runtime",
+        direction
+      )
+
+    case runtime_result do
+      :ok ->
+        # Then run bot-specific migrations
+        run_migrations(
+          repo_module,
+          app_module,
+          app_module_name(app_module),
+          direction
+        )
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  defp run_migrations(repo_module, app_module, display_name, direction) do
     migrations_path = Application.app_dir(app_module, "priv/repo/migrations")
 
     case Ecto.Migrator.with_repo(repo_module, fn _repo ->
            Ecto.Migrator.run(repo_module, migrations_path, direction, all: true)
          end) do
       {:ok, migrations_run, _} ->
-        IO.puts("✓ Migrations completed: #{migrations_run} migrations #{direction}")
+        IO.puts("✓ [#{display_name}] #{migrations_run} migrations #{direction}")
         :ok
 
       {:error, reason} ->
-        IO.puts("✗ Migration failed: #{inspect(reason)}")
+        IO.puts("✗ [#{display_name}] Migration failed: #{inspect(reason)}")
         {:error, reason}
     end
+  end
+
+  defp app_module_name(app) when is_atom(app) do
+    app |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize()
   end
 
   defp load_app(app_module) when is_atom(app_module) do
