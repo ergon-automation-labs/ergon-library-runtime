@@ -81,14 +81,21 @@ defmodule BotArmyRuntime.Registry do
     %{subject: "gtd.task.list", type: :request_reply, description: "List tasks", timeout_ms: 5000}
   ]
   ```
+
+  deployment_status can be: "deployed", "experimental", "disabled", "archived"
   """
   def register(bot_name, subjects) when is_binary(bot_name) and is_list(subjects) do
-    GenServer.cast(__MODULE__, {:register, bot_name, subjects, nil})
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, nil, nil})
   end
 
   def register(bot_name, subjects, version)
       when is_binary(bot_name) and is_list(subjects) do
-    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version})
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, nil})
+  end
+
+  def register(bot_name, subjects, version, deployment_status)
+      when is_binary(bot_name) and is_list(subjects) do
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, deployment_status})
   end
 
   @doc """
@@ -260,16 +267,20 @@ defmodule BotArmyRuntime.Registry do
   end
 
   @impl true
-  def handle_cast({:register, bot_name, subjects, version}, state) do
+  def handle_cast({:register, bot_name, subjects, version, deployment_status}, state) do
     now_unix_ms = System.system_time(:millisecond)
     resolved_version = version || "unknown"
-    state = upsert_bot_entry(state, bot_name, subjects, resolved_version, now_unix_ms)
+    resolved_status = deployment_status || "deployed"
+
+    state =
+      upsert_bot_entry(state, bot_name, subjects, resolved_version, resolved_status, now_unix_ms)
+
     entry = Map.fetch!(state.bots, bot_name)
 
     broadcast_presence(state, bot_name, entry.subjects, resolved_version, now_unix_ms)
 
     Logger.info(
-      "[Registry] Bot registered: #{bot_name} v#{resolved_version} with #{length(entry.subjects)} subjects"
+      "[Registry] Bot registered: #{bot_name} v#{resolved_version} (#{resolved_status}) with #{length(entry.subjects)} subjects"
     )
 
     {:noreply, state}
@@ -426,8 +437,11 @@ defmodule BotArmyRuntime.Registry do
       {:ok, %{"bot_name" => bot_name, "subjects" => subjects} = payload}
       when is_binary(bot_name) and is_list(subjects) ->
         version = Map.get(payload, "version", "unknown")
+        deployment_status = Map.get(payload, "deployment_status", "deployed")
         heartbeat_at = Map.get(payload, "heartbeat_at", System.system_time(:millisecond))
-        {:noreply, upsert_bot_entry(state, bot_name, subjects, version, heartbeat_at)}
+
+        {:noreply,
+         upsert_bot_entry(state, bot_name, subjects, version, deployment_status, heartbeat_at)}
 
       {:ok, _} ->
         {:noreply, state}
@@ -541,6 +555,7 @@ defmodule BotArmyRuntime.Registry do
     %{
       "name" => entry.name,
       "version" => Map.get(entry, :version, "unknown"),
+      "deployment_status" => Map.get(entry, :deployment_status, "deployed"),
       "registered_at" =>
         entry.registered_at |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601(),
       "last_heartbeat" =>
@@ -880,7 +895,14 @@ defmodule BotArmyRuntime.Registry do
 
   defp normalize_subject_type(_), do: :request_reply
 
-  defp upsert_bot_entry(state, bot_name, subjects, version, heartbeat_at_unix_ms) do
+  defp upsert_bot_entry(
+         state,
+         bot_name,
+         subjects,
+         version,
+         deployment_status,
+         heartbeat_at_unix_ms
+       ) do
     now_monotonic = System.monotonic_time(:millisecond)
     existing_entry = Map.get(state.bots, bot_name)
 
@@ -892,6 +914,7 @@ defmodule BotArmyRuntime.Registry do
     entry = %{
       name: bot_name,
       version: version || "unknown",
+      deployment_status: deployment_status || "deployed",
       subjects: normalized_subjects,
       last_heartbeat_monotonic_ms: now_monotonic,
       last_heartbeat_at: heartbeat_at_unix_ms,
