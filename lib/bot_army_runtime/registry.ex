@@ -84,15 +84,18 @@ defmodule BotArmyRuntime.Registry do
 
   deployment_status can be: "deployed", "experimental", "disabled", "archived"
   """
+  @spec register(binary(), list()) :: :ok
   def register(bot_name, subjects) when is_binary(bot_name) and is_list(subjects) do
     GenServer.cast(__MODULE__, {:register, bot_name, subjects, nil, nil})
   end
 
+  @spec register(binary(), list(), binary()) :: :ok
   def register(bot_name, subjects, version)
       when is_binary(bot_name) and is_list(subjects) do
     GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, nil})
   end
 
+  @spec register(binary(), list(), binary(), binary()) :: :ok
   def register(bot_name, subjects, version, deployment_status)
       when is_binary(bot_name) and is_list(subjects) do
     GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, deployment_status})
