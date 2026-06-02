@@ -425,7 +425,13 @@ defmodule BotArmyRuntime.Registry do
       end
 
     if state.connection do
-      Gnat.pub(state.connection, reply_to, response)
+      case Gnat.pub(state.connection, reply_to, response) do
+        :ok ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning("[Registry] Failed to publish query response: #{inspect(reason)}")
+      end
     end
 
     {:noreply, state}
@@ -940,7 +946,13 @@ defmodule BotArmyRuntime.Registry do
 
       case Jason.encode(payload) do
         {:ok, body} ->
-          Gnat.pub(state.connection, @registry_presence_subject, body)
+          case Gnat.pub(state.connection, @registry_presence_subject, body) do
+            :ok ->
+              :ok
+
+            {:error, reason} ->
+              Logger.warning("[Registry] Failed to publish presence: #{inspect(reason)}")
+          end
 
         {:error, reason} ->
           Logger.debug("[Registry] Failed to encode presence payload: #{inspect(reason)}")
