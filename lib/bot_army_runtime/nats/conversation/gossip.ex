@@ -24,7 +24,6 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
   require Logger
 
   alias BotArmyRuntime.Personality.Voice
-  alias BotArmyRuntime.Registry
   alias BotArmyRuntime.NATS.Conversation.Mailbox
 
   @intents [
