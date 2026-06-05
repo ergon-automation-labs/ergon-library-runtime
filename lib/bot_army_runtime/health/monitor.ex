@@ -122,7 +122,9 @@ defmodule BotArmyRuntime.Health.Monitor do
   def handle_info({:msg, %{topic: subject, body: body}}, state) do
     bot_id = extract_bot_id(subject)
 
-    if bot_id do
+    # Ignore internal services that publish health separately from their parent bot
+    # (e.g., goal_store is part of Synapse, not a standalone service)
+    if bot_id && bot_id not in ["goal_store"] do
       now = System.monotonic_time(:millisecond)
       payload = parse_body(body)
       was_stale = was_stale?(bot_id)
