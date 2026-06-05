@@ -25,7 +25,6 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
 
   alias BotArmyRuntime.Personality.Voice
   alias BotArmyRuntime.Registry
-  alias BotArmyRuntime.NATS.Conversation.Manager
   alias BotArmyRuntime.NATS.Conversation.Mailbox
 
   @intents [
@@ -150,19 +149,27 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
       "message" => message
     }
 
-    case Manager.start_conversation(
-           from_bot,
-           to_bot,
-           "gossip",
-           body,
-           timeout_ms: 15_000,
-           max_turns: 1
-         ) do
-      {:ok, conv_id} ->
-        Logger.info("[Gossip] #{from_bot} started gossip with #{to_bot}: #{conv_id}")
+    try do
+      case BotArmyRuntime.NATS.Conversation.Manager.start_conversation(
+             from_bot,
+             to_bot,
+             "gossip",
+             body,
+             timeout_ms: 15_000,
+             max_turns: 1
+           ) do
+        {:ok, conv_id} ->
+          Logger.info("[Gossip] #{from_bot} started gossip with #{to_bot}: #{conv_id}")
 
-      {:error, reason} ->
-        Logger.debug("[Gossip] Failed to start gossip: #{inspect(reason)}")
+        {:error, reason} ->
+          Logger.debug("[Gossip] Failed to start gossip: #{inspect(reason)}")
+      end
+    rescue
+      UndefinedFunctionError ->
+        Logger.debug("[Gossip] Conversation system not available")
+
+      e ->
+        Logger.debug("[Gossip] Error starting conversation: #{inspect(e)}")
     end
   end
 

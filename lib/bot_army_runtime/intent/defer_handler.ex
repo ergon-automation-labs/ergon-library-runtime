@@ -20,7 +20,6 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
   require Logger
 
   alias BotArmyRuntime.Intent.DeferRateLimiter
-  alias BotArmyRuntime.NATS.Conversation.Manager
   alias BotArmyRuntime.NATS.Publisher
 
   @doc """
@@ -115,7 +114,11 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
     body = Map.put(body, "intent", llm_intent)
 
     try do
-      case Manager.start_conversation(bot_name, "llm", "query", body,
+      case BotArmyRuntime.NATS.Conversation.Manager.start_conversation(
+             bot_name,
+             "llm",
+             "query",
+             body,
              timeout_ms: timeout_ms,
              max_turns: 1,
              priority: "low"
@@ -135,9 +138,7 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
       end
     rescue
       UndefinedFunctionError ->
-        Logger.warning(
-          "[DeferHandler] Conversation system not available, deferring to background"
-        )
+        Logger.debug("[DeferHandler] Conversation system not available, deferring to background")
 
         publish_defer_event(bot_name, action, details, nil, true)
         {:error, :conversation_unavailable}
