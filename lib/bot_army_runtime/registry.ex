@@ -855,6 +855,15 @@ defmodule BotArmyRuntime.Registry do
 
   # Presence payloads and some callers decode subjects as string-key maps; normalize
   # once at the storage boundary so list/format paths can assume atom keys.
+  defp normalize_subject_record(subject) when is_binary(subject) do
+    %{
+      subject: subject,
+      type: :subscribe,
+      description: "",
+      timeout_ms: 5000
+    }
+  end
+
   defp normalize_subject_record(subject) when is_map(subject) do
     subject_name = Map.get(subject, :subject) || Map.get(subject, "subject")
     type_raw = Map.get(subject, :type) || Map.get(subject, "type")
