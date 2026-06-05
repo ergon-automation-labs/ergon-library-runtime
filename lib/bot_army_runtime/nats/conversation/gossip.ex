@@ -115,7 +115,7 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
   end
 
   defp find_gossip_partner(bot_name) do
-    case Registry.list_bots() do
+    case BotArmyRuntime.Registry.list_bots() do
       {:ok, bots} ->
         candidates =
           bots
