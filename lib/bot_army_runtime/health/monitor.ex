@@ -177,11 +177,21 @@ defmodule BotArmyRuntime.Health.Monitor do
     if healthy_bots != [] do
       gossip_bot = Enum.random(healthy_bots)
 
-      case BotArmyRuntime.NATS.Conversation.Gossip.maybe_gossip(gossip_bot, idle: true) do
-        {:gossip_sent, partner} ->
-          Logger.info("[Health.Monitor] #{gossip_bot} gossiped with #{partner}")
+      try do
+        case BotArmyRuntime.NATS.Conversation.Gossip.maybe_gossip(gossip_bot, idle: true) do
+          {:gossip_sent, partner} ->
+            Logger.info("[Health.Monitor] #{gossip_bot} gossiped with #{partner}")
+
+          _ ->
+            :ok
+        end
+      rescue
+        UndefinedFunctionError ->
+          # Conversation system not available in this bot; skip gossip
+          :ok
 
         _ ->
+          # Other errors in gossip; log but don't crash the monitor
           :ok
       end
     end

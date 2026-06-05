@@ -114,23 +114,37 @@ defmodule BotArmyRuntime.Intent.DeferHandler do
 
     body = Map.put(body, "intent", llm_intent)
 
-    case Manager.start_conversation(bot_name, "llm", "query", body,
-           timeout_ms: timeout_ms,
-           max_turns: 1,
-           priority: "low"
-         ) do
-      {:ok, conversation_id} ->
-        publish_defer_event(bot_name, action, details, conversation_id, false)
+    try do
+      case Manager.start_conversation(bot_name, "llm", "query", body,
+             timeout_ms: timeout_ms,
+             max_turns: 1,
+             priority: "low"
+           ) do
+        {:ok, conversation_id} ->
+          publish_defer_event(bot_name, action, details, conversation_id, false)
 
-        Logger.info(
-          "[DeferHandler] #{bot_name} started defer conversation for #{action}: #{String.slice(conversation_id, 0..7)}"
+          Logger.info(
+            "[DeferHandler] #{bot_name} started defer conversation for #{action}: #{String.slice(conversation_id, 0..7)}"
+          )
+
+          {:ok, conversation_id}
+
+        {:error, reason} ->
+          Logger.warning("[DeferHandler] Failed to start defer conversation: #{inspect(reason)}")
+          {:error, reason}
+      end
+    rescue
+      UndefinedFunctionError ->
+        Logger.warning(
+          "[DeferHandler] Conversation system not available, deferring to background"
         )
 
-        {:ok, conversation_id}
+        publish_defer_event(bot_name, action, details, nil, true)
+        {:error, :conversation_unavailable}
 
-      {:error, reason} ->
-        Logger.warning("[DeferHandler] Failed to start defer conversation: #{inspect(reason)}")
-        {:error, reason}
+      e ->
+        Logger.warning("[DeferHandler] Error starting defer conversation: #{inspect(e)}")
+        {:error, e}
     end
   end
 
