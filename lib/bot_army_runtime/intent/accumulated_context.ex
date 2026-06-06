@@ -289,11 +289,15 @@ defmodule BotArmyRuntime.Intent.AccumulatedContext do
   end
 
   defp via(bot_name) do
-    {:via, Registry, {BotArmyRuntime.Registry, {:accumulated_context, bot_name}}}
+    {:via, Registry,
+     {BotArmyRuntime.AccumulatedContextRegistry, {:accumulated_context, bot_name}}}
   end
 
   defp whereis(bot_name) do
-    case Registry.lookup(BotArmyRuntime.Registry, {:accumulated_context, bot_name}) do
+    case Registry.lookup(
+           BotArmyRuntime.AccumulatedContextRegistry,
+           {:accumulated_context, bot_name}
+         ) do
       [{pid, _}] -> pid
       [] -> nil
     end
