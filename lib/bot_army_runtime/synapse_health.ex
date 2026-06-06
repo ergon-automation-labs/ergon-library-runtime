@@ -83,6 +83,7 @@ defmodule BotArmyRuntime.SynapseHealth do
       "event" => "system.health",
       "schema_version" => Keyword.get(opts, :schema_version, "1.0"),
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "source" => source,
       "source_node" => source_node,
       "triggered_by" => triggered_by,
       "tenant_id" => tenant_id,
