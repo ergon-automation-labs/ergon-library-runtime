@@ -36,13 +36,15 @@ defmodule BotArmyRuntime.SynapseHealth do
   @doc """
   Publish one `system.health` envelope on subject `system.health`.
 
-  ## Required
+  ## Required (one of):
 
     * `:source` — envelope `source` (e.g. `\"bot_army_gtd\"`)
+    * `:triggered_by` — envelope `triggered_by` (when using `source_node`)
     * `:service` — payload `service` (e.g. `\"gtd\"`)
 
   ## Optional
 
+    * `:source_node` — Node name (default: node() atom as string)
     * `:tenant_id` — default `Tenant.default_tenant_id/0`
     * `:status` — overrides `:health_signal` when set
     * `:health_signal` — `\"nominal\"` | `\"degraded\"` | `\"critical\"` (default `\"nominal\"`)
@@ -51,7 +53,9 @@ defmodule BotArmyRuntime.SynapseHealth do
     * `:sequence`, `:dedupe_key`, `:schema_version`
   """
   def publish(opts) when is_list(opts) do
-    source = Keyword.fetch!(opts, :source)
+    source = Keyword.get(opts, :source) || Keyword.fetch!(opts, :triggered_by)
+    source_node = Keyword.get(opts, :source_node, Atom.to_string(node()))
+    triggered_by = Keyword.get(opts, :triggered_by, source)
     service = Keyword.fetch!(opts, :service)
     tenant_id = Keyword.get(opts, :tenant_id, Tenant.default_tenant_id())
 
@@ -79,7 +83,8 @@ defmodule BotArmyRuntime.SynapseHealth do
       "event" => "system.health",
       "schema_version" => Keyword.get(opts, :schema_version, "1.0"),
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
-      "source" => source,
+      "source_node" => source_node,
+      "triggered_by" => triggered_by,
       "tenant_id" => tenant_id,
       "payload" => payload
     }
