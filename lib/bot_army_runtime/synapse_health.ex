@@ -13,6 +13,8 @@ defmodule BotArmyRuntime.SynapseHealth do
   alias BotArmyRuntime.NATS.Publisher
   alias BotArmyRuntime.Tenant
 
+  require Logger
+
   @doc """
   Wall-clock uptime in seconds for the running BEAM node (same semantics as `:erlang.statistics/1`).
   """
