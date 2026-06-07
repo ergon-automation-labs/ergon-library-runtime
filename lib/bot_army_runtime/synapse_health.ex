@@ -94,9 +94,13 @@ defmodule BotArmyRuntime.SynapseHealth do
 
     _ = BotArmy.Heartbeat.record(envelope, repo: Keyword.get(opts, :repo))
 
+    envelope_json = Jason.encode!(envelope)
+
     Logger.info(
-      "[SynapseHealth] Publishing envelope: source=#{source} source_node=#{source_node} triggered_by=#{triggered_by} envelope_keys=#{envelope |> Map.keys() |> Enum.join(",")}"
+      "[SynapseHealth] Publishing envelope: source=#{source} source_node=#{source_node} triggered_by=#{triggered_by}"
     )
+
+    Logger.info("[SynapseHealth] Envelope JSON: #{String.slice(envelope_json, 0, 500)}")
 
     Publisher.publish("system.health", envelope)
   end
