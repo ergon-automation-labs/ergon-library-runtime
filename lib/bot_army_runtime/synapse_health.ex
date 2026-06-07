@@ -92,8 +92,8 @@ defmodule BotArmyRuntime.SynapseHealth do
 
     _ = BotArmy.Heartbeat.record(envelope, repo: Keyword.get(opts, :repo))
 
-    Logger.debug(
-      "[SynapseHealth] Publishing with source=#{source} source_node=#{source_node} triggered_by=#{triggered_by}"
+    Logger.info(
+      "[SynapseHealth] Publishing envelope: source=#{source} source_node=#{source_node} triggered_by=#{triggered_by} envelope_keys=#{envelope |> Map.keys() |> Enum.join(",")}"
     )
 
     Publisher.publish("system.health", envelope)
