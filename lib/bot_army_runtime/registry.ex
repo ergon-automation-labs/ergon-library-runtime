@@ -589,6 +589,13 @@ defmodule BotArmyRuntime.Registry do
         base
       end
 
+    base =
+      if Map.get(subject, :schema) do
+        Map.put(base, "schema", subject.schema)
+      else
+        base
+      end
+
     if Map.get(subject, :conversation_support) do
       Map.put(base, "conversation_support", subject.conversation_support)
     else
@@ -827,6 +834,13 @@ defmodule BotArmyRuntime.Registry do
           "timeout_ms" => Map.get(subject, :timeout_ms, 5000)
         }
 
+        provider =
+          if Map.get(subject, :schema) do
+            Map.put(provider, "schema", subject.schema)
+          else
+            provider
+          end
+
         Map.update(subject_acc, subject.subject, [provider], &[provider | &1])
       end)
     end)
@@ -881,6 +895,12 @@ defmodule BotArmyRuntime.Registry do
       case Map.get(subject, :capabilities) || Map.get(subject, "capabilities") do
         nil -> base
         caps -> Map.put(base, :capabilities, caps)
+      end
+
+    base =
+      case Map.get(subject, :schema) || Map.get(subject, "schema") do
+        nil -> base
+        sch -> Map.put(base, :schema, sch)
       end
 
     case Map.get(subject, :conversation_support) || Map.get(subject, "conversation_support") do
