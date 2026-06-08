@@ -100,14 +100,9 @@ end
 # Configure Logger
 config :logger,
   level: :info,
-  format: "[$level] $message\n"
+  backends: [:console],
+  default_formatter: {BotArmyRuntime.LoggerFormatter, []}
 
-# JSON Logger for structured logs in production
-if config_env() == :prod do
-  config :logger,
-    backends: [{LoggerJSON.Backends.GoogleCloudLogging, {}}],
-    level: :info
-end
-
-# Import environment-specific config
-import_config "#{config_env()}.exs"
+config :logger, :console,
+  format: {BotArmyRuntime.LoggerFormatter, []},
+  metadata: [:correlation_id]
