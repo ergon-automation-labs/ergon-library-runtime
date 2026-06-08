@@ -7,73 +7,94 @@ defmodule BotArmyRuntime.LoggerFormatter do
 
   ## Configuration
 
-  Add to your config.exs:
+  In your config.exs, use the helper from BotArmyRuntime.Config:
 
-      config :logger, :default_handler,
-        formatter: {BotArmyRuntime.LoggerFormatter, :format}
+      import BotArmyRuntime.Config
+      logger_config()
 
-  Or for all handlers:
+  Or manually:
+
+      config :logger,
+        level: :info,
+        backends: [:console],
+        default_formatter: {BotArmyRuntime.LoggerFormatter, []}
 
       config :logger, :console,
-        format: {BotArmyRuntime.LoggerFormatter, :format}
+        format: {BotArmyRuntime.LoggerFormatter, []},
+        metadata: [:correlation_id]
 
   ## Output Format
 
   Standard format with optional correlation_id:
-    [timestamp] [level] [correlation_id=xyz] Module message
+    [HH:MM:SS.SSS] [LEVEL] [correlation_id=xyz] message
 
   If no correlation_id is set, it's omitted:
-    [timestamp] [level] Module message
+    [HH:MM:SS.SSS] [LEVEL] message
+
+  Additional metadata fields can be included by passing a list of field names
+  to the formatter configuration.
   """
 
   @doc """
-  Format a log entry with optional correlation_id.
+  Format a log entry with optional correlation_id and other metadata.
 
-  This is called by the Logger infrastructure for each log event.
+  Called by the Logger infrastructure for each log event. The `metadata_fields`
+  parameter specifies which additional metadata fields to include in the output.
+
+  ## Arguments
+
+    - `level` - Log level atom (:info, :error, etc.)
+    - `msg` - Message (can be binary, charlist, or iodata)
+    - `timestamp` - {date, time} tuple
+    - `metadata` - Keyword list of log metadata
+    - `metadata_fields` - List of additional metadata field names to include
+
+  Returns iodata suitable for output.
   """
-  def format(level, msg, timestamp, metadata) do
+  def format(level, msg, timestamp, metadata, metadata_fields \\ []) do
     timestamp_str = format_timestamp(timestamp)
     level_str = String.upcase(to_string(level))
 
-    # Extract correlation_id from metadata if present
+    # Always include correlation_id if present
     correlation_id_str =
       case Keyword.get(metadata, :correlation_id) do
         nil -> ""
         cid -> "[correlation_id=#{cid}] "
       end
 
-    # Extract module/function info if available
-    module_str =
-      case Keyword.get(metadata, :module) do
-        nil ->
-          ""
-
-        mod ->
-          case Keyword.get(metadata, :function) do
-            nil -> "[#{inspect(mod)}] "
-            func -> "[#{inspect(mod)}.#{elem(func, 0)}/#{elem(func, 1)}] "
-          end
-      end
+    # Include additional metadata fields
+    extra_fields_str = format_extra_fields(metadata_fields, metadata)
 
     # Format the actual message
     msg_str = format_message(msg, metadata)
 
-    "#{timestamp_str} [#{level_str}] #{correlation_id_str}#{module_str}#{msg_str}\n"
+    "#{timestamp_str} [#{level_str}] #{correlation_id_str}#{extra_fields_str}#{msg_str}\n"
+  end
+
+  defp format_extra_fields([], _metadata), do: ""
+
+  defp format_extra_fields(fields, metadata) when is_list(fields) do
+    result =
+      for field <- fields, Keyword.has_key?(metadata, field) do
+        "[#{field}=#{inspect(Keyword.get(metadata, field))}]"
+      end
+      |> Enum.join(" ")
+
+    case result do
+      "" -> ""
+      str -> str <> " "
+    end
   end
 
   # Private helpers
 
-  defp format_timestamp({date, time}) do
-    {year, month, day} = date
+  defp format_timestamp({_date, time}) do
     {hour, minute, second} = time
-
-    # Try to get microseconds from metadata if available
-    microseconds = 0
 
     # Format: HH:MM:SS.SSS
     :io_lib.format(
       ~c"~2..0B:~2..0B:~2..0B.~3..0B",
-      [hour, minute, second, div(microseconds, 1000)]
+      [hour, minute, second, 0]
     )
     |> to_string()
   end
