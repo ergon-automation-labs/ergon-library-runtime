@@ -90,7 +90,7 @@ defmodule BotArmyRuntime.Ecto.MigrationRunner do
            Ecto.Migrator.run(repo_module, migrations_path, direction, all: true)
          end) do
       {:ok, migrations_run, _} ->
-        IO.puts("✓ [#{display_name}] #{migrations_run} migrations #{direction}")
+        IO.puts("✓ [#{display_name}] #{length(migrations_run)} migrations #{direction}")
         :ok
 
       {:error, reason} ->
