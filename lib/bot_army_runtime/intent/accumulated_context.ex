@@ -301,6 +301,9 @@ defmodule BotArmyRuntime.Intent.AccumulatedContext do
       [{pid, _}] -> pid
       [] -> nil
     end
+  rescue
+    ArgumentError ->
+      nil
   end
 
   defp ensure_started(bot_name) do

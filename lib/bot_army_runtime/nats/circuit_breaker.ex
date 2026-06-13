@@ -67,7 +67,7 @@ defmodule BotArmyRuntime.NATS.CircuitBreaker do
   - `{:open, retry_after_ms}` — circuit is open, request should fail fast
   """
   def allow?(key) do
-    case Registry.lookup(BotArmyRuntime.NATS.CircuitBreakerRegistry, key) do
+    case lookup_registry(key) do
       # No breaker registered yet, allow the request
       [] ->
         :ok
@@ -85,7 +85,7 @@ defmodule BotArmyRuntime.NATS.CircuitBreaker do
   Record a successful request. Closes the circuit if it was half-open.
   """
   def record_success(key) do
-    case Registry.lookup(BotArmyRuntime.NATS.CircuitBreakerRegistry, key) do
+    case lookup_registry(key) do
       [] ->
         :ok
 
@@ -104,12 +104,16 @@ defmodule BotArmyRuntime.NATS.CircuitBreaker do
   Pass `:rate_limited` or `:timeout` as reason for longer cooldown.
   """
   def record_failure(key, reason \\ :error) do
-    pid = ensure_breaker(key)
+    case ensure_breaker(key) do
+      {:ok, pid} ->
+        try do
+          GenServer.cast(pid, {:failure, reason})
+        catch
+          :exit, _ -> :ok
+        end
 
-    try do
-      GenServer.cast(pid, {:failure, reason})
-    catch
-      :exit, _ -> :ok
+      :unavailable ->
+        :ok
     end
   end
 
@@ -117,7 +121,7 @@ defmodule BotArmyRuntime.NATS.CircuitBreaker do
   Get the current state of a circuit breaker key.
   """
   def get_state(key) do
-    case Registry.lookup(BotArmyRuntime.NATS.CircuitBreakerRegistry, key) do
+    case lookup_registry(key) do
       [] ->
         %{state: :unknown, failures: 0}
 
@@ -130,18 +134,29 @@ defmodule BotArmyRuntime.NATS.CircuitBreaker do
     end
   end
 
+  defp lookup_registry(key) do
+    Registry.lookup(BotArmyRuntime.NATS.CircuitBreakerRegistry, key)
+  rescue
+    ArgumentError -> []
+  end
+
   defp ensure_breaker(key) do
-    case Registry.lookup(BotArmyRuntime.NATS.CircuitBreakerRegistry, key) do
+    case lookup_registry(key) do
       [{pid, _}] ->
-        pid
+        {:ok, pid}
 
       [] ->
-        {:ok, pid} =
-          GenServer.start_link(__MODULE__, key,
-            name: {:via, Registry, {BotArmyRuntime.NATS.CircuitBreakerRegistry, key}}
-          )
+        try do
+          {:ok, pid} =
+            GenServer.start_link(__MODULE__, key,
+              name: {:via, Registry, {BotArmyRuntime.NATS.CircuitBreakerRegistry, key}}
+            )
 
-        pid
+          {:ok, pid}
+        rescue
+          ArgumentError ->
+            :unavailable
+        end
     end
   end
 

@@ -22,11 +22,10 @@ defmodule BotArmyRuntime.Application do
 
     children =
       [
-        # Registry for NATS connection status broadcasts
+        # Registries must start first — used by :via tuples in dependent processes
         {Registry, keys: :duplicate, name: BotArmyRuntime.NATS.ConnectionRegistry},
-
-        # Registry for circuit breaker state (one per breaker key)
         {Registry, keys: :unique, name: BotArmyRuntime.NATS.CircuitBreakerRegistry},
+        {Registry, keys: :unique, name: BotArmyRuntime.AccumulatedContextRegistry},
 
         # PromEx metrics collection
         {BotArmyRuntime.PromEx, []},
@@ -49,9 +48,6 @@ defmodule BotArmyRuntime.Application do
 
         # NATS circuit breaker (per-key failure tracking for resilience)
         {BotArmyRuntime.NATS.CircuitBreaker, []},
-
-        # Registry for per-bot AccumulatedContext processes (used by :via tuples)
-        {Registry, keys: :unique, name: BotArmyRuntime.AccumulatedContextRegistry},
 
         # Service discovery registry (in-memory bot registry with heartbeat detection)
         {BotArmyRuntime.Registry, []},
