@@ -105,7 +105,7 @@ release:
 	@echo "==============================================="
 	@echo "Building OTP release"
 	@echo "==============================================="
-	rm -rf _build/prod/rel/bot_army_runtime
+	rm -rf _build/prod/rel/bot_army_library_runtime
 	MIX_ENV=prod $(MIX) release
 
 publish-release: release
@@ -120,10 +120,10 @@ publish-release: release
 		echo "Failed to resolve version from mix.exs"; \
 		exit 1; \
 	fi; \
-	TARBALL=bot_army_runtime-$$VERSION.tar.gz; \
+	TARBALL=bot_army_library_runtime-$$VERSION.tar.gz; \
 	echo "Version: $$VERSION"; \
 	echo "Creating release tarball..."; \
-	tar -czf "$$TARBALL" -C _build/prod/rel bot_army_runtime/; \
+	tar -czf "$$TARBALL" -C _build/prod/rel bot_army_library_runtime/; \
 	echo "✓ Tarball created: $$TARBALL"; \
 	echo ""; \
 	echo "Creating GitHub release v$$VERSION..."; \
