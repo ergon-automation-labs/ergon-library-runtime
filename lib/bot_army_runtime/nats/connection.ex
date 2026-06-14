@@ -219,6 +219,8 @@ defmodule BotArmyRuntime.NATS.Connection do
            no_responders: true
          }) do
       {:ok, pid} ->
+        # Monitor the Gnat process so we detect crashes and handle reconnection
+        Process.monitor(pid)
         {:ok, pid}
 
       {:error, reason} ->
