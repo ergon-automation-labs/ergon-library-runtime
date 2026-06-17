@@ -30,17 +30,26 @@ defmodule BotArmyRuntime.Intent.DeferHandlerTest do
 
   describe "handle_defer/5" do
     test "returns :no_handler when disabled" do
-      original = Application.get_env(:bot_army_runtime, :defer_handler, [])
-      Application.put_env(:bot_army_runtime, :defer_handler, Keyword.put(original, :enabled, false))
+      original = Application.get_env(:bot_army_library_runtime, :defer_handler, [])
+
+      Application.put_env(
+        :bot_army_library_runtime,
+        :defer_handler,
+        Keyword.put(original, :enabled, false)
+      )
 
       details = %{score: 0.5, reason: :low_roll, threshold_breakdown: %{}}
-      config = [prompt_builder: &DeferHandler.default_prompt_builder/3, delivery_fn: fn _, _, _, _ -> :ok end]
+
+      config = [
+        prompt_builder: &DeferHandler.default_prompt_builder/3,
+        delivery_fn: fn _, _, _, _ -> :ok end
+      ]
 
       result = DeferHandler.handle_defer("test_bot", "test_action", details, %{}, config)
 
       assert result == :no_handler
 
-      Application.put_env(:bot_army_runtime, :defer_handler, original)
+      Application.put_env(:bot_army_library_runtime, :defer_handler, original)
     end
 
     test "returns :rate_limited when rate limiter blocks" do
@@ -57,7 +66,11 @@ defmodule BotArmyRuntime.Intent.DeferHandlerTest do
       BotArmyRuntime.Intent.DeferRateLimiter.mark(key)
 
       details = %{score: 0.5, reason: :low_roll, threshold_breakdown: %{}}
-      config = [prompt_builder: &DeferHandler.default_prompt_builder/3, delivery_fn: fn _, _, _, _ -> :ok end]
+
+      config = [
+        prompt_builder: &DeferHandler.default_prompt_builder/3,
+        delivery_fn: fn _, _, _, _ -> :ok end
+      ]
 
       result = DeferHandler.handle_defer("test_bot", "test_action_rate", details, %{}, config)
 
