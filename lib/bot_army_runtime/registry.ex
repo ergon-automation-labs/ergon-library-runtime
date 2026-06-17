@@ -86,19 +86,28 @@ defmodule BotArmyRuntime.Registry do
   """
   @spec register(binary(), list()) :: :ok
   def register(bot_name, subjects) when is_binary(bot_name) and is_list(subjects) do
-    GenServer.cast(__MODULE__, {:register, bot_name, subjects, nil, nil})
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, nil, nil, nil})
   end
 
   @spec register(binary(), list(), binary()) :: :ok
   def register(bot_name, subjects, version)
       when is_binary(bot_name) and is_list(subjects) do
-    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, nil})
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, nil, nil})
   end
 
   @spec register(binary(), list(), binary(), binary()) :: :ok
   def register(bot_name, subjects, version, deployment_status)
       when is_binary(bot_name) and is_list(subjects) do
-    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, deployment_status})
+    GenServer.cast(__MODULE__, {:register, bot_name, subjects, version, deployment_status, nil})
+  end
+
+  @spec register(binary(), list(), binary(), binary(), binary()) :: :ok
+  def register(bot_name, subjects, version, deployment_status, category)
+      when is_binary(bot_name) and is_list(subjects) do
+    GenServer.cast(
+      __MODULE__,
+      {:register, bot_name, subjects, version, deployment_status, category}
+    )
   end
 
   @doc """
@@ -271,19 +280,40 @@ defmodule BotArmyRuntime.Registry do
 
   @impl true
   def handle_cast({:register, bot_name, subjects, version, deployment_status}, state) do
+    # Backward-compatible 5-element cast (pre-category)
+    handle_cast({:register, bot_name, subjects, version, deployment_status, nil}, state)
+  end
+
+  @impl true
+  def handle_cast({:register, bot_name, subjects, version, deployment_status, category}, state) do
     now_unix_ms = System.system_time(:millisecond)
     resolved_version = version || "unknown"
     resolved_status = deployment_status || "deployed"
+    resolved_category = category || infer_category(bot_name)
 
     state =
-      upsert_bot_entry(state, bot_name, subjects, resolved_version, resolved_status, now_unix_ms)
+      upsert_bot_entry(
+        state,
+        bot_name,
+        subjects,
+        resolved_version,
+        resolved_status,
+        resolved_category,
+        now_unix_ms
+      )
 
     entry = Map.fetch!(state.bots, bot_name)
 
-    broadcast_presence(state, bot_name, entry.subjects, resolved_version, now_unix_ms)
+    broadcast_presence(
+      state,
+      bot_name,
+      entry.subjects,
+      resolved_version,
+      now_unix_ms
+    )
 
     Logger.info(
-      "[Registry] Bot registered: #{bot_name} v#{resolved_version} (#{resolved_status}) with #{length(entry.subjects)} subjects"
+      "[Registry] Bot registered: #{bot_name} v#{resolved_version} (#{resolved_status}) category=#{resolved_category} with #{length(entry.subjects)} subjects"
     )
 
     {:noreply, state}
@@ -447,10 +477,19 @@ defmodule BotArmyRuntime.Registry do
       when is_binary(bot_name) and is_list(subjects) ->
         version = Map.get(payload, "version", "unknown")
         deployment_status = Map.get(payload, "deployment_status", "deployed")
+        category = Map.get(payload, "category", nil)
         heartbeat_at = Map.get(payload, "heartbeat_at", System.system_time(:millisecond))
 
         {:noreply,
-         upsert_bot_entry(state, bot_name, subjects, version, deployment_status, heartbeat_at)}
+         upsert_bot_entry(
+           state,
+           bot_name,
+           subjects,
+           version,
+           deployment_status,
+           category,
+           heartbeat_at
+         )}
 
       {:ok, _} ->
         {:noreply, state}
@@ -560,11 +599,42 @@ defmodule BotArmyRuntime.Registry do
     end
   end
 
+  # Infer bot category from name heuristics when not explicitly provided.
+  defp infer_category(name) do
+    n = String.downcase(name)
+
+    cond do
+      String.contains?(n, "bridge") or String.contains?(n, "webhook") or
+        String.contains?(n, "proxy") or
+        String.contains?(n, "surface") or String.contains?(n, "discord") or
+        String.contains?(n, "slack") or String.contains?(n, "telegram") ->
+        "bridge"
+
+      String.contains?(n, "router") or String.contains?(n, "broker") or
+        String.contains?(n, "dispatcher") or String.contains?(n, "scheduler") or
+          String.contains?(n, "orchestrator") ->
+        "service"
+
+      String.contains?(n, "backup") or String.contains?(n, "cache") or
+        String.contains?(n, "runtime") or String.contains?(n, "core") or
+        String.contains?(n, "registry") or String.contains?(n, "factory") ->
+        "infra"
+
+      String.contains?(n, "graphify") or String.contains?(n, "llm") or
+        String.contains?(n, "synapse") or String.contains?(n, "skills") ->
+        "utility"
+
+      true ->
+        "bot"
+    end
+  end
+
   defp format_bot_entry(entry) do
     %{
       "name" => entry.name,
       "version" => Map.get(entry, :version, "unknown"),
       "deployment_status" => Map.get(entry, :deployment_status, "deployed"),
+      "category" => Map.get(entry, :category, "bot"),
       "registered_at" =>
         entry.registered_at |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601(),
       "last_heartbeat" =>
@@ -939,6 +1009,7 @@ defmodule BotArmyRuntime.Registry do
          subjects,
          version,
          deployment_status,
+         category,
          heartbeat_at_unix_ms
        ) do
     now_monotonic = System.monotonic_time(:millisecond)
@@ -948,11 +1019,13 @@ defmodule BotArmyRuntime.Registry do
       if existing_entry, do: existing_entry.registered_at, else: heartbeat_at_unix_ms
 
     normalized_subjects = Enum.map(subjects, &normalize_subject_record/1)
+    resolved_category = category || infer_category(bot_name)
 
     entry = %{
       name: bot_name,
       version: version || "unknown",
       deployment_status: deployment_status || "deployed",
+      category: resolved_category,
       subjects: normalized_subjects,
       last_heartbeat_monotonic_ms: now_monotonic,
       last_heartbeat_at: heartbeat_at_unix_ms,
