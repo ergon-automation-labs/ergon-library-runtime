@@ -83,9 +83,9 @@ defmodule BotArmyRuntime.NATS.Conversation.Gossip do
 
       partner ->
         intent = select_intent()
-        # Use mailbox (async) instead of conversation (request/reply) to avoid timeouts
-        # when target bots don't have conversation handlers
-        mode = Keyword.get(opts, :mode, :mailbox)
+        # Always use mailbox mode (async) instead of conversation mode.
+        # Conversation mode requires Manager to be available and adds complexity.
+        mode = :mailbox
         metric = Keyword.get(opts, :metric)
         count = Keyword.get(opts, :count, 0)
 
