@@ -294,9 +294,24 @@ defmodule BotArmyRuntime.NATS.Connection do
     )
   end
 
-  @doc false
-  defp calculate_backoff(attempt, base_delay) do
-    # Exponential backoff with jitter: base_delay * 2^attempt + random jitter
+  @doc """
+  Calculate exponential backoff delay with jitter for retry attempts.
+
+  Used by the connection module and by consumers retrying subscriptions.
+  Returns milliseconds to wait before the next attempt.
+
+  ## Parameters
+  - `attempt`: 0-indexed retry attempt number
+  - `base_delay`: base delay in milliseconds (typically 1000)
+
+  ## Examples
+      iex> BotArmyRuntime.NATS.Connection.calculate_backoff(0, 1000)
+      # Returns ~1000-1999ms
+      iex> BotArmyRuntime.NATS.Connection.calculate_backoff(3, 1000)
+      # Returns ~9000-9999ms (1000 * 2^3 + jitter)
+  """
+  def calculate_backoff(attempt, base_delay) do
+    # Exponential backoff with jitter: base_delay * 2^min(attempt,5) + random jitter
     delay = base_delay * Integer.pow(2, min(attempt, 5))
     jitter = :rand.uniform(1000)
     delay + jitter
