@@ -15,7 +15,7 @@ defmodule BotArmyLibraryRuntime.MixProject do
     [
       # Start Jason before Sentry — Sentry.Application validates the json library at boot
       extra_applications: [:logger, :inets, :jason],
-      mod: {BotArmyRuntime.Application, []}
+      mod: {BotArmyLibraryRuntime.Application, []}
     ]
   end
 
