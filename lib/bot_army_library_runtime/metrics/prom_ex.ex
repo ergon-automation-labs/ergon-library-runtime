@@ -5,7 +5,7 @@ defmodule BotArmyLibraryRuntime.PromEx do
   Collects NATS, BEAM, and Ecto metrics via PromEx plugins.
   """
 
-  use PromEx, otp_app: :bot_army_runtime
+  use PromEx, otp_app: :bot_army_library_runtime
 
   @impl true
   def plugins do
