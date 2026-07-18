@@ -9,7 +9,7 @@ defmodule BotArmyRuntime.NATS.JetStreamTest do
       configs = JetStream.stream_configs()
 
       assert is_list(configs)
-      assert length(configs) == 9
+      assert length(configs) == 10
     end
 
     test "each config has required fields" do
@@ -35,6 +35,7 @@ defmodule BotArmyRuntime.NATS.JetStreamTest do
       assert "BOT_CHORE" in names
       assert "BOT_SRE" in names
       assert "BOT_DLQ" in names
+      assert "BUILD_HISTORY" in names
     end
 
     test "DLQ stream uses dlq.> subject" do

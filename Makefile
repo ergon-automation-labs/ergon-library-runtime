@@ -1,4 +1,4 @@
-.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all push-and-publish release publish-release
+.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all git-push push-and-publish release publish-release bump-version
 
 MIX ?= /Users/abby/.local/share/mise/shims/mix
 
@@ -139,6 +139,18 @@ publish-release: release
 
 .DEFAULT_GOAL := help
 
+git-push:
+	@LOG_FILE="/tmp/git-push-bot_army_library_runtime-$$(date +%s).log"; \
+	echo "Pushing to origin/main and logging to $$LOG_FILE..."; \
+	git push 2>&1 | tee "$$LOG_FILE"; \
+	echo "✓ Log saved: $$LOG_FILE"
 
-push-and-publish:
-	@git push && $(MAKE) publish-release
+push-and-publish: git-push
+	@$(MAKE) publish-release
+
+bump-version:
+	@if [ -z "$(BUMP)" ]; then echo "Usage: make bump-version BUMP=major|minor|patch"; exit 1; fi
+	@OLD=$$(grep 'version:' mix.exs | head -1 | sed -E 's/.*version: "([^"]+)".*/\1/'); \
+	bash $(SCRIPTS_DIRECTORY)/bump_version.sh mix.exs $(BUMP) > /dev/null; \
+	NEW=$$(grep 'version:' mix.exs | head -1 | sed -E 's/.*version: "([^"]+)".*/\1/'); \
+	echo "✓ Bumped: $$OLD → $$NEW"
