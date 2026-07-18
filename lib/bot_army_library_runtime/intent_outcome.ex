@@ -1,4 +1,4 @@
-defmodule BotArmy.IntentOutcome do
+defmodule BotArmyLibraryRuntime.IntentOutcome do
   @moduledoc """
   Persisted intent outcome tracking in PostgreSQL.
 

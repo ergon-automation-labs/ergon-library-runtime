@@ -1,4 +1,4 @@
-defmodule BotArmy.Pulse do
+defmodule BotArmyLibraryRuntime.Pulse do
   @moduledoc """
   Pulse publishing module.
 

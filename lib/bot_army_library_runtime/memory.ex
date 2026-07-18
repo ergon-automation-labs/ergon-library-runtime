@@ -1,4 +1,4 @@
-defmodule BotArmy.Memory do
+defmodule BotArmyLibraryRuntime.Memory do
   @moduledoc """
   Append-only session memory in PostgreSQL for resuming thoughts across restarts.
 

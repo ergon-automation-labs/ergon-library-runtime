@@ -1,4 +1,4 @@
-defmodule BotArmy.IntentThresholdAdjustment do
+defmodule BotArmyLibraryRuntime.IntentThresholdAdjustment do
   @moduledoc """
   Adaptive weight adjustments for intent thresholds.
 

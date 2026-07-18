@@ -1,4 +1,4 @@
-defmodule BotArmy.Heartbeat do
+defmodule BotArmyLibraryRuntime.Heartbeat do
   @moduledoc """
   Persists the latest `system.health` heartbeat per service and tenant.
 

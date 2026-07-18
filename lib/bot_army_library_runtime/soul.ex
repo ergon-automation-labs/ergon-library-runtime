@@ -1,4 +1,4 @@
-defmodule BotArmy.Soul do
+defmodule BotArmyLibraryRuntime.Soul do
   @moduledoc """
   Soul storage and retrieval module.
 
