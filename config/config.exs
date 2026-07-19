@@ -11,6 +11,13 @@ config :bot_army_library_runtime, BotArmyRuntime.Ecto.Repo,
   queue_target: 500,
   queue_interval: 1000
 
+# Configure Database Circuit Breaker
+# Prevents hammering the database during outages and auto-recovers when it comes back online
+config :bot_army_library_runtime, :db_circuit_breaker,
+  enabled: true,
+  failure_threshold: 5,
+  half_open_timeout_ms: 30_000
+
 # Configure NATS
 # Multi-cluster support: parse NATS_SERVERS as space-separated "host:port" list
 # Examples:

@@ -49,6 +49,9 @@ defmodule BotArmyLibraryRuntime.Application do
         # NATS circuit breaker (per-key failure tracking for resilience)
         {BotArmyLibraryRuntime.NATS.CircuitBreaker, []},
 
+        # Database circuit breaker (prevents hammering DB during outages)
+        {BotArmyLibraryRuntime.Ecto.CircuitBreaker, []},
+
         # Service discovery registry (in-memory bot registry with heartbeat detection)
         {BotArmyLibraryRuntime.Registry, []},
 
@@ -76,7 +79,8 @@ defmodule BotArmyLibraryRuntime.Application do
   defp metrics_endpoint do
     port = Application.get_env(:bot_army_library_runtime, :metrics_port, 9090)
 
-    {Plug.Cowboy, scheme: :http, plug: BotArmyLibraryRuntime.Metrics.Endpoint, options: [port: port]}
+    {Plug.Cowboy,
+     scheme: :http, plug: BotArmyLibraryRuntime.Metrics.Endpoint, options: [port: port]}
   end
 
   @auto_start_services Application.compile_env(
