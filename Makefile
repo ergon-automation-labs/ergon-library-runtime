@@ -139,6 +139,13 @@ publish-release: release
 
 .DEFAULT_GOAL := help
 
+push: test compile credo pre-push-cleanup
+	@echo "✅ All validations passed"
+	@echo "$$(date +%s)" > .push-validated
+	@echo "✓ Proof-of-validation created"
+	@$(MAKE) git-push
+
+
 git-push:
 	@LOG_FILE="/tmp/git-push-bot_army_library_runtime-$$(date +%s).log"; \
 	echo "Pushing to origin/main and logging to $$LOG_FILE..."; \
