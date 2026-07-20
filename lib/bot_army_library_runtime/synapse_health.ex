@@ -7,7 +7,7 @@ defmodule BotArmyLibraryRuntime.SynapseHealth do
   pulses) are much slower. See `docs/SYNAPSE_CONTEXT_HYDRATION_CONTRACT.md`.
 
   Each publish also upserts the latest row in the bot's `heartbeats` table when
-  an Ecto repo is available (see `BotArmy.Heartbeat` and `BotArmyLibraryRuntime.Personality.Repo`).
+  an Ecto repo is available (see `BotArmyLibraryRuntime.Heartbeat` and `BotArmyLibraryRuntime.Personality.Repo`).
   """
 
   alias BotArmyLibraryRuntime.NATS.Publisher
@@ -92,7 +92,7 @@ defmodule BotArmyLibraryRuntime.SynapseHealth do
       "payload" => payload
     }
 
-    _ = BotArmy.Heartbeat.record(envelope, repo: Keyword.get(opts, :repo))
+    _ = BotArmyLibraryRuntime.Heartbeat.record(envelope, repo: Keyword.get(opts, :repo))
 
     envelope_json = Jason.encode!(envelope)
 
