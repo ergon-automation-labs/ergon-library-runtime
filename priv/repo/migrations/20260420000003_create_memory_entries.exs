@@ -1,15 +1,12 @@
 defmodule BotArmyRuntime.Repo.Migrations.CreateMemoryEntries do
   @moduledoc """
-  TEMPLATE MIGRATION — do not run from bot_army_runtime.
+  Shared runtime migration — runs automatically via
+  `BotArmyLibraryRuntime.Ecto.MigrationRunner`, tracked in
+  `runtime_schema_migrations`.
 
-  Each bot that uses `BotArmy.Memory` must copy this migration into its own
-  `priv/repo/migrations/` directory, renaming the module to match its namespace:
-
-      defmodule BotArmySynapse.Repo.Migrations.CreateMemoryEntries do
-        # ... same content ...
-      end
-
-  Then run `mix ecto.migrate` in that bot.
+  Do NOT copy this into a bot's own `priv/repo/migrations/`. The runner applies
+  it to every bot database before the bot's own migrations, so a copy either
+  fails on an existing table or is silently skipped as a version collision.
   """
 
   use Ecto.Migration

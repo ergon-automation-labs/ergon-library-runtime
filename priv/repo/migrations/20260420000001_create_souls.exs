@@ -1,20 +1,12 @@
 defmodule BotArmyRuntime.Repo.Migrations.CreateSouls do
   @moduledoc """
-  TEMPLATE MIGRATION — do not run from bot_army_runtime.
+  Shared runtime migration — runs automatically via
+  `BotArmyLibraryRuntime.Ecto.MigrationRunner`, tracked in
+  `runtime_schema_migrations`.
 
-  bot_army_runtime is a shared library with no database of its own.
-  Each bot that uses BotArmy.Soul must copy this migration into its own
-  `priv/repo/migrations/` directory, renaming the module to match its namespace:
-
-      defmodule BotArmyGtd.Repo.Migrations.CreateSouls do
-        # ... same content ...
-      end
-
-  Copy `20260420000002_create_heartbeats.exs` and `20260420000003_create_memory_entries.exs`
-  the same way when persisting `system.health` heartbeats or session memory via
-  `BotArmy.Heartbeat` / `BotArmy.Memory`.
-
-  Then run `mix ecto.migrate` in that bot.
+  Do NOT copy this into a bot's own `priv/repo/migrations/`. The runner applies
+  it to every bot database before the bot's own migrations, so a copy either
+  fails on an existing table or is silently skipped as a version collision.
   """
 
   use Ecto.Migration
