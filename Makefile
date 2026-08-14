@@ -1,4 +1,6 @@
-.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all git-push push-and-publish release publish-release bump-version
+.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all git-push push-and-publish release publish-release bump-version credo
+
+SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
 
 MIX ?= /Users/abby/.local/share/mise/shims/mix
 
@@ -57,6 +59,12 @@ test-watch:
 
 lint:
 	$(MIX) credo --only warning
+
+credo:
+	@LOG_FILE="/tmp/credo-bot_army_library_runtime-$$(date +%s).log"; \
+	echo "Running credo and logging to $$LOG_FILE..."; \
+	$(MIX) credo 2>&1 | tee "$$LOG_FILE"; \
+	echo "✓ Credo log: $$LOG_FILE"
 
 format:
 	$(MIX) format
@@ -157,6 +165,9 @@ push-and-publish: git-push
 
 bump-version:
 	@if [ -z "$(BUMP)" ]; then echo "Usage: make bump-version BUMP=major|minor|patch"; exit 1; fi
+	@if [ ! -f "$(SCRIPTS_DIRECTORY)/bump_version.sh" ]; then \
+		echo "✗ Not found: $(SCRIPTS_DIRECTORY)/bump_version.sh (set SCRIPTS_DIRECTORY)"; exit 1; \
+	fi
 	@OLD=$$(grep 'version:' mix.exs | head -1 | sed -E 's/.*version: "([^"]+)".*/\1/'); \
 	bash $(SCRIPTS_DIRECTORY)/bump_version.sh mix.exs $(BUMP) > /dev/null; \
 	NEW=$$(grep 'version:' mix.exs | head -1 | sed -E 's/.*version: "([^"]+)".*/\1/'); \
