@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.NATS.ConnectionTest do
+defmodule BotArmyLibraryRuntime.NATS.ConnectionTest do
   use ExUnit.Case, async: false
   @moduletag :nats
 
-  alias BotArmyRuntime.NATS.Connection
+  alias BotArmyLibraryRuntime.NATS.Connection
 
   # The Connection GenServer is already started by the application supervisor.
   # Tests that need a separate instance use unique config to avoid name conflicts.
@@ -35,7 +35,7 @@ defmodule BotArmyRuntime.NATS.ConnectionTest do
       Connection.subscribe_to_status()
 
       # Simulate a broadcast by dispatching directly
-      Registry.dispatch(BotArmyRuntime.NATS.ConnectionRegistry, :nats_status, fn entries ->
+      Registry.dispatch(BotArmyLibraryRuntime.NATS.ConnectionRegistry, :nats_status, fn entries ->
         for {pid, _} <- entries, do: send(pid, {:nats, :connected})
       end)
 
@@ -47,7 +47,7 @@ defmodule BotArmyRuntime.NATS.ConnectionTest do
     test "multiple subscribers all receive broadcasts" do
       Connection.subscribe_to_status()
 
-      Registry.dispatch(BotArmyRuntime.NATS.ConnectionRegistry, :nats_status, fn entries ->
+      Registry.dispatch(BotArmyLibraryRuntime.NATS.ConnectionRegistry, :nats_status, fn entries ->
         for {pid, _} <- entries, do: send(pid, {:nats, :disconnected})
       end)
 
@@ -61,7 +61,7 @@ defmodule BotArmyRuntime.NATS.ConnectionTest do
     test "Connection GenServer stays alive after NATS connection failures" do
       # The Connection started by the app supervisor should be alive
       # even if NATS is unreachable
-      conn_pid = GenServer.whereis(BotArmyRuntime.NATS.Connection)
+      conn_pid = GenServer.whereis(BotArmyLibraryRuntime.NATS.Connection)
       # May be nil if not started with that name, but if it exists it should be alive
       if conn_pid do
         assert Process.alive?(conn_pid)

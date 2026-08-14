@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.GossipPollAffinityTest do
+defmodule BotArmyLibraryRuntime.GossipPollAffinityTest do
   use ExUnit.Case
   @moduletag :core
 
@@ -28,7 +28,7 @@ defmodule BotArmyRuntime.GossipPollAffinityTest do
       }
     ]
 
-    snap = BotArmyRuntime.GossipPollAffinity.snapshot(tasks, goals)
+    snap = BotArmyLibraryRuntime.GossipPollAffinity.snapshot(tasks, goals)
 
     assert snap["version"] == 1
     assert get_in(snap, ["top_goal", "name"]) == "Prepush Reliability"
@@ -51,11 +51,11 @@ defmodule BotArmyRuntime.GossipPollAffinityTest do
       "tasks_top" => Enum.map(tasks, & &1["title"]),
       "projects_top" => Enum.map(goals, & &1["name"]),
       "goals_top" => Enum.map(goals, & &1["name"]),
-      "affinity" => BotArmyRuntime.GossipPollAffinity.snapshot(tasks, goals)
+      "affinity" => BotArmyLibraryRuntime.GossipPollAffinity.snapshot(tasks, goals)
     }
 
     vote =
-      BotArmyRuntime.GossipPollAffinity.choose_priority_vote(
+      BotArmyLibraryRuntime.GossipPollAffinity.choose_priority_vote(
         ["protect_focus", "reduce_load", "ship_more"],
         snapshot,
         :skills,

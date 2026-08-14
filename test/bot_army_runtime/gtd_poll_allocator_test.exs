@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.GtdPollAllocatorTest do
+defmodule BotArmyLibraryRuntime.GtdPollAllocatorTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.GtdPollAllocator
+  alias BotArmyLibraryRuntime.GtdPollAllocator
 
   describe "allocate/3 with empty snapshot" do
     test "returns empty list for empty map" do

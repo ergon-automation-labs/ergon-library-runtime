@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Intent.ArmyOpinionVoteTest do
+defmodule BotArmyLibraryRuntime.Intent.ArmyOpinionVoteTest do
   use ExUnit.Case, async: true
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.ArmyOpinionVote
+  alias BotArmyLibraryRuntime.Intent.ArmyOpinionVote
 
   @options [
     "Record-keeper (truth + queues)",

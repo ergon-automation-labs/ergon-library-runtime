@@ -2,7 +2,7 @@ defmodule BotArmy.IntentOutcomeTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmy.IntentOutcome
+  alias BotArmyLibraryRuntime.IntentOutcome
 
   describe "record/2" do
     test "returns :skipped when repo is unavailable" do

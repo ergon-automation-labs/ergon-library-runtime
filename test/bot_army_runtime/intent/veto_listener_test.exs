@@ -1,9 +1,9 @@
-defmodule BotArmyRuntime.Intent.VetoListenerTest do
+defmodule BotArmyLibraryRuntime.Intent.VetoListenerTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.Schema
-  alias BotArmyRuntime.Intent.VetoListener
+  alias BotArmyLibraryRuntime.Intent.Schema
+  alias BotArmyLibraryRuntime.Intent.VetoListener
 
   describe "rule_matches?/4" do
     test "matches when all rule keys match" do

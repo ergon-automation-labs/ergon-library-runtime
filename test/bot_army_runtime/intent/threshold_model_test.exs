@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Intent.ThresholdModelTest do
+defmodule BotArmyLibraryRuntime.Intent.ThresholdModelTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.ThresholdModel
+  alias BotArmyLibraryRuntime.Intent.ThresholdModel
 
   describe "compute_score/2" do
     test "computes weighted score from context entries" do

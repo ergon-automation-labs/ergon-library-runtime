@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Personality.ObservabilityTest do
+defmodule BotArmyLibraryRuntime.Personality.ObservabilityTest do
   use ExUnit.Case
   @moduletag :format
 
-  alias BotArmyRuntime.Personality.Observability
+  alias BotArmyLibraryRuntime.Personality.Observability
 
   describe "soul_get_complete/5" do
     test "emits telemetry with outcome and version" do
@@ -64,7 +64,7 @@ defmodule BotArmyRuntime.Personality.ObservabilityTest do
     end
   end
 
-  describe "BotArmy.Pulse.publish/3" do
+  describe "BotArmyLibraryRuntime.Pulse.publish/3" do
     test "emits personality pulse telemetry (NATS may fail without broker)" do
       ref = make_ref()
       handler = {:personality_pulse, ref}
@@ -81,7 +81,7 @@ defmodule BotArmyRuntime.Personality.ObservabilityTest do
 
       on_exit(fn -> :telemetry.detach(handler) end)
 
-      BotArmy.Pulse.publish(:gtd_bot, %{status: :active, current_task: "smoke"})
+      BotArmyLibraryRuntime.Pulse.publish(:gtd_bot, %{status: :active, current_task: "smoke"})
 
       assert_receive {:pulse_pub, measurements, metadata, ^ref}
       assert measurements.count == 1

@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Intent.OutcomeTrackerTest do
+defmodule BotArmyLibraryRuntime.Intent.OutcomeTrackerTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.OutcomeTracker
+  alias BotArmyLibraryRuntime.Intent.OutcomeTracker
 
   describe "resolve/3" do
     test "converts atom outcome to string" do

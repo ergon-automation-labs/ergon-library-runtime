@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Intent.AccumulatedContextTest do
+defmodule BotArmyLibraryRuntime.Intent.AccumulatedContextTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.AccumulatedContext
+  alias BotArmyLibraryRuntime.Intent.AccumulatedContext
 
   describe "normalize_entry/1" do
     test "fills in defaults for partial entries" do

@@ -26,8 +26,8 @@ defmodule BotArmyLibraryRuntime.Intent.ReflectionJob do
 
   require Logger
 
-  alias BotArmy.IntentOutcome
-  alias BotArmy.IntentThresholdAdjustment
+  alias BotArmyLibraryRuntime.IntentOutcome
+  alias BotArmyLibraryRuntime.IntentThresholdAdjustment
   alias BotArmyLibraryRuntime.NATS.Publisher
 
   @default_interval_ms 30 * 60 * 1000

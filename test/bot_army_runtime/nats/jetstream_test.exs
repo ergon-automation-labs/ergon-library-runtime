@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.NATS.JetStreamTest do
+defmodule BotArmyLibraryRuntime.NATS.JetStreamTest do
   use ExUnit.Case, async: false
   @moduletag :nats
 
-  alias BotArmyRuntime.NATS.JetStream
+  alias BotArmyLibraryRuntime.NATS.JetStream
 
   describe "stream_configs/0" do
     test "returns list of stream configurations" do

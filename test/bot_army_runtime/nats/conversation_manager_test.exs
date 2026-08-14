@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.NATS.Conversation.ManagerTest do
+defmodule BotArmyLibraryRuntime.NATS.Conversation.ManagerTest do
   use ExUnit.Case
   @moduletag :nats
 
-  alias BotArmyRuntime.NATS.Conversation.Manager
+  alias BotArmyLibraryRuntime.NATS.Conversation.Manager
 
   test "cleanup keeps recent terminal conversations without crashing fold accumulator" do
     table = :ets.new(:conversation_manager_cleanup_test, [:set])

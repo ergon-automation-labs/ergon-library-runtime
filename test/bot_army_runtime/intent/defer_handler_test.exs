@@ -1,9 +1,9 @@
-defmodule BotArmyRuntime.Intent.DeferHandlerTest do
+defmodule BotArmyLibraryRuntime.Intent.DeferHandlerTest do
   use ExUnit.Case, async: false
 
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.DeferHandler
+  alias BotArmyLibraryRuntime.Intent.DeferHandler
 
   describe "default_prompt_builder/3" do
     test "builds a prompt with action, score, and reason" do
@@ -63,7 +63,7 @@ defmodule BotArmyRuntime.Intent.DeferHandlerTest do
       end
 
       # Pre-mark to simulate a recent defer
-      BotArmyRuntime.Intent.DeferRateLimiter.mark(key)
+      BotArmyLibraryRuntime.Intent.DeferRateLimiter.mark(key)
 
       details = %{score: 0.5, reason: :low_roll, threshold_breakdown: %{}}
 

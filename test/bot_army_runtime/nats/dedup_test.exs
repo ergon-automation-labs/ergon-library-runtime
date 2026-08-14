@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.NATS.DedupTest do
+defmodule BotArmyLibraryRuntime.NATS.DedupTest do
   use ExUnit.Case, async: false
   @moduletag :nats
 
-  alias BotArmyRuntime.NATS.Dedup
+  alias BotArmyLibraryRuntime.NATS.Dedup
 
   # Dedup is started by the application supervisor, so we don't need
   # to start_supervised! it. We clear the table between tests instead.

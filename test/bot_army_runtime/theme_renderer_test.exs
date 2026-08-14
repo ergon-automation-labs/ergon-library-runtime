@@ -1,9 +1,9 @@
-defmodule BotArmyRuntime.ThemeRendererTest do
+defmodule BotArmyLibraryRuntime.ThemeRendererTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.ThemeRenderer
-  alias BotArmyRuntime.Personality.ThemeConfig
+  alias BotArmyLibraryRuntime.ThemeRenderer
+  alias BotArmyLibraryRuntime.Personality.ThemeConfig
 
   describe "render/2" do
     test "with cyberpunk theme, renders a task type with prefix" do

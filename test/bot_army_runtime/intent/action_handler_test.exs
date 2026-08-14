@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Intent.ActionHandlerTest do
+defmodule BotArmyLibraryRuntime.Intent.ActionHandlerTest do
   use ExUnit.Case, async: false
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.ActionHandler
+  alias BotArmyLibraryRuntime.Intent.ActionHandler
 
   describe "execute_action/6" do
     test "returns :no_handler when config is nil" do

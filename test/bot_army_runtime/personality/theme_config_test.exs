@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Personality.ThemeConfigTest do
+defmodule BotArmyLibraryRuntime.Personality.ThemeConfigTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.Personality.ThemeConfig
+  alias BotArmyLibraryRuntime.Personality.ThemeConfig
 
   describe "cyberpunk/0" do
     test "returns a ThemeConfig with setting cyberpunk" do

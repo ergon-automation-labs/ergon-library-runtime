@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.RPG.BotCharacterTest do
+defmodule BotArmyLibraryRuntime.RPG.BotCharacterTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmyRuntime.RPG.BotCharacter
+  alias BotArmyLibraryRuntime.RPG.BotCharacter
 
   describe "name/2" do
     test "returns fallback name when RPG bot is unreachable" do

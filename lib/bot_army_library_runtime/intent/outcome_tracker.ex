@@ -25,7 +25,7 @@ defmodule BotArmyLibraryRuntime.Intent.OutcomeTracker do
 
   require Logger
 
-  alias BotArmy.IntentOutcome
+  alias BotArmyLibraryRuntime.IntentOutcome
 
   @subscribe_subject "events.bot_army.intent.>"
 

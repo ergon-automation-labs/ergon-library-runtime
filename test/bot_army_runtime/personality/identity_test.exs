@@ -1,9 +1,9 @@
-defmodule BotArmyRuntime.Personality.IdentityTest do
+defmodule BotArmyLibraryRuntime.Personality.IdentityTest do
   use ExUnit.Case
   @moduletag :format
-  doctest BotArmyRuntime.Personality.Identity
+  doctest BotArmyLibraryRuntime.Personality.Identity
 
-  alias BotArmyRuntime.Personality.Identity
+  alias BotArmyLibraryRuntime.Personality.Identity
 
   describe "symbol/1" do
     test "returns GTD bot symbol" do

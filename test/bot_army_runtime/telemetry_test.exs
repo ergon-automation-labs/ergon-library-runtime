@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.TelemetryTest do
+defmodule BotArmyLibraryRuntime.TelemetryTest do
   use ExUnit.Case, async: false
   @moduletag :core
 
@@ -8,7 +8,7 @@ defmodule BotArmyRuntime.TelemetryTest do
     test "does not log for fast queries" do
       log =
         capture_log(fn ->
-          BotArmyRuntime.Telemetry.handle_ecto_query(
+          BotArmyLibraryRuntime.Telemetry.handle_ecto_query(
             [:ecto, :repo, :query],
             %{total_time: 500_000},
             %{repo: TestRepo, source: "tasks"},
@@ -22,7 +22,7 @@ defmodule BotArmyRuntime.TelemetryTest do
     test "logs warning for slow queries (>1s)" do
       log =
         capture_log([level: :warning], fn ->
-          BotArmyRuntime.Telemetry.handle_ecto_query(
+          BotArmyLibraryRuntime.Telemetry.handle_ecto_query(
             [:ecto, :repo, :query],
             %{total_time: 1_500_000},
             %{repo: TestRepo, source: "tasks"},
@@ -38,7 +38,7 @@ defmodule BotArmyRuntime.TelemetryTest do
     test "logs error for query failures" do
       log =
         capture_log([level: :error], fn ->
-          BotArmyRuntime.Telemetry.handle_ecto_error(
+          BotArmyLibraryRuntime.Telemetry.handle_ecto_error(
             [:ecto, :repo, :query, :exception],
             %{total_time: 100_000},
             %{repo: TestRepo, source: "tasks", error: %RuntimeError{message: "boom"}},
@@ -56,7 +56,7 @@ defmodule BotArmyRuntime.TelemetryTest do
 
       log =
         capture_log(fn ->
-          BotArmyRuntime.Telemetry.handle_nats_publish(
+          BotArmyLibraryRuntime.Telemetry.handle_nats_publish(
             [:nats, :pub],
             %{duration: 50_000},
             %{subject: "gtd.task.created"},
@@ -73,7 +73,7 @@ defmodule BotArmyRuntime.TelemetryTest do
 
       log =
         capture_log(fn ->
-          BotArmyRuntime.Telemetry.handle_nats_publish(
+          BotArmyLibraryRuntime.Telemetry.handle_nats_publish(
             [:nats, :pub],
             %{total_time: 50_000},
             %{subject: "gtd.task.created"},
@@ -90,7 +90,7 @@ defmodule BotArmyRuntime.TelemetryTest do
 
       log =
         capture_log(fn ->
-          BotArmyRuntime.Telemetry.handle_nats_publish(
+          BotArmyLibraryRuntime.Telemetry.handle_nats_publish(
             [:nats, :pub],
             %{},
             %{subject: "gtd.task.created"},
@@ -107,7 +107,7 @@ defmodule BotArmyRuntime.TelemetryTest do
     test "logs error for failed publish" do
       log =
         capture_log([level: :error], fn ->
-          BotArmyRuntime.Telemetry.handle_nats_error(
+          BotArmyLibraryRuntime.Telemetry.handle_nats_error(
             [:nats, :pub, :exception],
             %{duration: 50_000},
             %{subject: "gtd.task.created", error: %RuntimeError{message: "connection lost"}},
@@ -123,7 +123,7 @@ defmodule BotArmyRuntime.TelemetryTest do
     test "handle_sentry_error is a no-op when Sentry DSN is not configured" do
       result =
         try do
-          BotArmyRuntime.Telemetry.handle_sentry_error(
+          BotArmyLibraryRuntime.Telemetry.handle_sentry_error(
             [:ecto, :repo, :query, :exception],
             %{},
             %{error: %RuntimeError{message: "test"}, source: "tasks"},
@@ -141,7 +141,7 @@ defmodule BotArmyRuntime.TelemetryTest do
     test "handle_sentry_error handles missing error in metadata gracefully" do
       result =
         try do
-          BotArmyRuntime.Telemetry.handle_sentry_error(
+          BotArmyLibraryRuntime.Telemetry.handle_sentry_error(
             [:nats, :pub, :exception],
             %{},
             %{subject: "test.subject"},

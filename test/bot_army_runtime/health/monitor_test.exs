@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Health.MonitorTest do
+defmodule BotArmyLibraryRuntime.Health.MonitorTest do
   use ExUnit.Case, async: false
   @moduletag :core
 
-  alias BotArmyRuntime.Health.Monitor
+  alias BotArmyLibraryRuntime.Health.Monitor
 
   @table :bot_army_health_monitor
 

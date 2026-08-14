@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Health.ResponderTest do
+defmodule BotArmyLibraryRuntime.Health.ResponderTest do
   use ExUnit.Case, async: false
   @moduletag :core
 
-  alias BotArmyRuntime.Health.Responder
+  alias BotArmyLibraryRuntime.Health.Responder
 
   # The Registry is already started by the application supervisor.
 

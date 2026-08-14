@@ -2,7 +2,7 @@ defmodule BotArmy.IntentThresholdAdjustmentTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmy.IntentThresholdAdjustment
+  alias BotArmyLibraryRuntime.IntentThresholdAdjustment
 
   defmodule MockThresholdRepo do
     use GenServer

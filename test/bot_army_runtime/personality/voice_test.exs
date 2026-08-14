@@ -1,7 +1,7 @@
-defmodule BotArmyRuntime.Personality.VoiceTest do
+defmodule BotArmyLibraryRuntime.Personality.VoiceTest do
   use ExUnit.Case
   @moduletag :format
-  alias BotArmyRuntime.Personality.Voice
+  alias BotArmyLibraryRuntime.Personality.Voice
 
   describe "stance/1" do
     test "returns GTD stance" do

@@ -1,7 +1,7 @@
-defmodule BotArmyRuntime.Personality.FormatterTest do
+defmodule BotArmyLibraryRuntime.Personality.FormatterTest do
   use ExUnit.Case
   @moduletag :format
-  alias BotArmyRuntime.Personality.Formatter
+  alias BotArmyLibraryRuntime.Personality.Formatter
 
   describe "with_symbol/2" do
     test "prepends GTD bot symbol" do

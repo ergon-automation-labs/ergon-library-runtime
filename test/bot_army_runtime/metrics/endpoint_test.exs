@@ -1,11 +1,11 @@
-defmodule BotArmyRuntime.Metrics.EndpointTest do
+defmodule BotArmyLibraryRuntime.Metrics.EndpointTest do
   use ExUnit.Case, async: true
   @moduletag :core
 
   import Plug.Test
   import Plug.Conn
 
-  alias BotArmyRuntime.Metrics.Endpoint
+  alias BotArmyLibraryRuntime.Metrics.Endpoint
 
   describe "GET /metrics" do
     test "returns 200 with prometheus text format" do

@@ -1,13 +1,13 @@
-defmodule BotArmyRuntime.MemoryTest do
+defmodule BotArmyLibraryRuntime.MemoryTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmy.Memory
+  alias BotArmyLibraryRuntime.Memory
 
   describe "append/2" do
     test "rejects entries without a scope" do
       assert {:error, :missing_scope} =
-               Memory.append(%{tenant_id: BotArmyRuntime.Tenant.default_tenant_id()},
+               Memory.append(%{tenant_id: BotArmyLibraryRuntime.Tenant.default_tenant_id()},
                  telemetry: false
                )
     end
@@ -20,7 +20,7 @@ defmodule BotArmyRuntime.MemoryTest do
                  "session-1",
                  "What is next?",
                  "Ship the memory layer.",
-                 repo: BotArmyRuntime.Ecto.Repo,
+                 repo: BotArmyLibraryRuntime.Ecto.Repo,
                  telemetry: false
                )
     end
@@ -30,7 +30,7 @@ defmodule BotArmyRuntime.MemoryTest do
     test "returns an empty list when no repo is running" do
       assert [] =
                Memory.list("session-1",
-                 repo: BotArmyRuntime.Ecto.Repo,
+                 repo: BotArmyLibraryRuntime.Ecto.Repo,
                  telemetry: false
                )
     end

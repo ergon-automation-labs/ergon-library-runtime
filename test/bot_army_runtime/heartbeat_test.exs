@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.HeartbeatTest do
+defmodule BotArmyLibraryRuntime.HeartbeatTest do
   use ExUnit.Case
   @moduletag :core
 
-  alias BotArmy.Heartbeat
+  alias BotArmyLibraryRuntime.Heartbeat
 
   describe "record/2 envelope" do
     test "rejects envelopes without a service" do
@@ -10,7 +10,7 @@ defmodule BotArmyRuntime.HeartbeatTest do
                Heartbeat.record(
                  %{
                    "event" => "system.health",
-                   "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+                   "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
                    "payload" => %{}
                  },
                  telemetry: false
@@ -25,10 +25,10 @@ defmodule BotArmyRuntime.HeartbeatTest do
                  [
                    source: "bot_army_gtd",
                    service: "gtd",
-                   tenant_id: BotArmyRuntime.Tenant.default_tenant_id(),
+                   tenant_id: BotArmyLibraryRuntime.Tenant.default_tenant_id(),
                    status: "healthy"
                  ],
-                 repo: BotArmyRuntime.Ecto.Repo,
+                 repo: BotArmyLibraryRuntime.Ecto.Repo,
                  telemetry: false
                )
     end

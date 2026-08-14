@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.Intent.SchemaTest do
+defmodule BotArmyLibraryRuntime.Intent.SchemaTest do
   use ExUnit.Case
   @moduletag :nats
 
-  alias BotArmyRuntime.Intent.Schema
+  alias BotArmyLibraryRuntime.Intent.Schema
 
   describe "intent_subject/2" do
     test "builds intent subject from bot name and action" do

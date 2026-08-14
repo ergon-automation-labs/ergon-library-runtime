@@ -164,21 +164,19 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
        circuit_state: :closed,
        failures: 0,
        opened_at: nil,
-       config: %{
-         failure_threshold:
-           Application.get_env(:bot_army_library_runtime, :db_circuit_breaker,
-             failure_threshold: 5
-           )[
-             :failure_threshold
-           ],
-         half_open_timeout_ms:
-           Application.get_env(:bot_army_library_runtime, :db_circuit_breaker,
-             half_open_timeout_ms: 30_000
-           )[
-             :half_open_timeout_ms
-           ]
-       }
+       config: load_config()
      }}
+  end
+
+  # Read on init and again on reset, so reconfiguring the breaker does not
+  # require restarting the process that holds its counters.
+  defp load_config do
+    env = Application.get_env(:bot_army_library_runtime, :db_circuit_breaker, [])
+
+    %{
+      failure_threshold: Keyword.get(env, :failure_threshold, @failure_threshold),
+      half_open_timeout_ms: Keyword.get(env, :half_open_timeout_ms, @half_open_timeout_ms)
+    }
   end
 
   @impl true
@@ -258,6 +256,8 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
 
   def handle_cast(:reset, state) do
     Logger.info("[DB CircuitBreaker] Manual reset")
-    {:noreply, %{state | circuit_state: :closed, failures: 0, opened_at: nil}}
+
+    {:noreply,
+     %{state | circuit_state: :closed, failures: 0, opened_at: nil, config: load_config()}}
   end
 end

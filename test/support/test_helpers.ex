@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.TestHelpers do
+defmodule BotArmyLibraryRuntime.TestHelpers do
   alias Publisher
   alias Repo
   alias Connection
@@ -26,7 +26,7 @@ defmodule BotArmyRuntime.TestHelpers do
 
   ## Examples
 
-      {:ok, pid} = BotArmyRuntime.TestHelpers.start_test_nats()
+      {:ok, pid} = BotArmyLibraryRuntime.TestHelpers.start_test_nats()
       on_exit(fn -> Process.kill(pid, :sigterm) end)
   """
   def start_test_nats do

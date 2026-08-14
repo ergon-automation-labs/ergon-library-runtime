@@ -1,9 +1,9 @@
-defmodule BotArmyRuntime.Intent.DeferRateLimiterTest do
+defmodule BotArmyLibraryRuntime.Intent.DeferRateLimiterTest do
   use ExUnit.Case, async: false
 
   @moduletag :core
 
-  alias BotArmyRuntime.Intent.DeferRateLimiter
+  alias BotArmyLibraryRuntime.Intent.DeferRateLimiter
 
   setup do
     # Ensure the ETS table exists and clear it for each test

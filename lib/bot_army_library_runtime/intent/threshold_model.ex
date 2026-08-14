@@ -130,7 +130,7 @@ defmodule BotArmyLibraryRuntime.Intent.ThresholdModel do
           {:ok, decision(), map()} | {:error, term()}
   def evaluate_with_adjustments(bot_name, action, thresholds, context, opts \\ []) do
     adjustments =
-      BotArmy.IntentThresholdAdjustment.latest_adjustments(bot_name, action, opts)
+      BotArmyLibraryRuntime.IntentThresholdAdjustment.latest_adjustments(bot_name, action, opts)
       |> Enum.map(fn adj -> {adj.observation_type, adj.adjusted_weight / adj.original_weight} end)
       |> Map.new()
 

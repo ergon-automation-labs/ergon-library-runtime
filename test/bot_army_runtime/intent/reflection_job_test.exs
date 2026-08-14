@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.Intent.ReflectionJobTest do
+defmodule BotArmyLibraryRuntime.Intent.ReflectionJobTest do
   use ExUnit.Case
   @moduletag :core
 

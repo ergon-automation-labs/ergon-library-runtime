@@ -1,8 +1,8 @@
-defmodule BotArmyRuntime.TracingTest do
+defmodule BotArmyLibraryRuntime.TracingTest do
   use ExUnit.Case, async: false
   @moduletag :core
 
-  alias BotArmyRuntime.Tracing
+  alias BotArmyLibraryRuntime.Tracing
 
   describe "inject_trace_context/1" do
     test "returns headers list when no active span" do
