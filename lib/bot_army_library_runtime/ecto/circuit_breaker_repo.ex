@@ -10,7 +10,7 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerRepo do
   In a bot's repo module:
 
       defmodule MyBot.Repo do
-        use BotArmyRuntime.Ecto.CircuitBreakerRepo,
+        use BotArmyLibraryRuntime.Ecto.CircuitBreakerRepo,
           otp_app: :my_bot,
           adapter: Ecto.Adapters.Postgres
       end
