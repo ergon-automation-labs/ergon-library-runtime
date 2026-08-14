@@ -1,4 +1,4 @@
-.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all git-push push-and-publish release publish-release bump-version credo
+.PHONY: test-handlers test-stores test-nats test-integration test-full help install compile test lint format check docs clean setup-hooks health-check-all git-push push-and-publish release publish-release bump-version credo pre-push-cleanup
 
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
 
@@ -146,6 +146,24 @@ publish-release: release
 	echo "✓ Release published to GitHub"
 
 .DEFAULT_GOAL := help
+
+pre-push-cleanup:
+	@echo "🧹 Cleaning up pre-push artifacts..."
+	@if git diff --quiet git-hooks/pre-push; then \
+		echo "✓ No hook changes"; \
+	else \
+		echo "📋 Staging hook changes..."; \
+		git add git-hooks/pre-push; \
+		git commit -m "chore: sync pre-push hook" || true; \
+	fi
+	@if git diff --quiet mix.lock; then \
+		echo "✓ No lock file changes"; \
+	else \
+		echo "📋 Staging lock file changes..."; \
+		git add mix.lock; \
+		git commit -m "chore: lock file updates from pre-push validation" || true; \
+	fi
+	@echo "✓ Ready to push"
 
 push: test compile credo pre-push-cleanup
 	@echo "✅ All validations passed"
