@@ -146,6 +146,13 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
           e ->
             GenServer.cast(__MODULE__, {:failure, :unknown})
             {:error, e}
+        catch
+          # A pool shutdown exits rather than raising. Without this it would be
+          # caught below as :circuit_breaker_unavailable and never counted as
+          # the database failure it is.
+          :exit, reason ->
+            GenServer.cast(__MODULE__, {:failure, :database_error})
+            {:error, {:exit, reason}}
         end
 
       {:open, retry_after} ->
