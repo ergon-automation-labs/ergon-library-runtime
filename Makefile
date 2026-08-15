@@ -33,7 +33,7 @@ setup-hooks:
 	@git config core.hooksPath git-hooks
 	@echo "✓ Git hooks installed (core.hooksPath = git-hooks)"
 
-compile:
+_compile-impl:
 	$(MIX) compile
 
 test:
