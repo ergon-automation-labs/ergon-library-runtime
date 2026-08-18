@@ -50,6 +50,17 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerRepo do
     fun |> CircuitBreaker.call() |> normalize()
   end
 
+  @doc """
+  Runs `fun` through the circuit breaker and returns raw results (not tuples).
+
+  Used for `all/2` and `one/2` which should return lists/values or raise,
+  not tuples. This allows Ecto's migration system and other callers expecting
+  raw results to work correctly.
+  """
+  def guard_raw(fun) when is_function(fun, 0) do
+    fun |> CircuitBreaker.call() |> normalize_raw()
+  end
+
   # The breaker returns {:ok, whatever fun returned}, so unwrap the inner tuple
   # for callbacks that already answer with {:ok, _} / {:error, _}.
   defp normalize({:ok, {:ok, result}}), do: {:ok, result}
@@ -71,6 +82,15 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerRepo do
   defp normalize({:error, {:exit, reason}}), do: {:error, {:exit, reason}}
   defp normalize({:error, _other}), do: {:error, :database_error}
 
+  # normalize_raw: return raw values instead of tuples (for all/one compatibility)
+  # Unwrap the breaker's {:ok, result} and extract the actual value
+  defp normalize_raw({:ok, result}), do: result
+  # If circuit breaker is unavailable, raise with the error so callers get
+  # an exception like they would from a normal Ecto repo
+  defp normalize_raw({:error, reason}) do
+    raise "Database unavailable (circuit breaker: #{inspect(reason)})"
+  end
+
   defmacro __using__(opts) do
     quote do
       use Ecto.Repo, unquote(opts)
@@ -89,11 +109,11 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerRepo do
       defoverridable all: 2, one: 2, insert: 2, update: 2, delete: 2, transaction: 2
 
       def all(queryable, opts) do
-        CircuitBreakerRepo.guard(fn -> super(queryable, opts) end)
+        CircuitBreakerRepo.guard_raw(fn -> super(queryable, opts) end)
       end
 
       def one(queryable, opts) do
-        CircuitBreakerRepo.guard(fn -> super(queryable, opts) end)
+        CircuitBreakerRepo.guard_raw(fn -> super(queryable, opts) end)
       end
 
       def insert(changeset, opts) do
