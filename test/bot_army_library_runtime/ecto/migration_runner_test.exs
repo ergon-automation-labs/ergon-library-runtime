@@ -15,6 +15,56 @@ defmodule BotArmyLibraryRuntime.Ecto.MigrationRunnerTest do
 
   defp touch(path, name), do: File.write!(Path.join(path, name), "")
 
+  defmodule FakeRepo do
+    def config, do: [otp_app: :bot_army_library_runtime_test]
+  end
+
+  describe "with_migration_source/3" do
+    test "points the repo config at runtime_schema_migrations while running" do
+      Application.put_env(:bot_army_library_runtime_test, FakeRepo, database: "ergon_test")
+
+      source =
+        MigrationRunner.with_migration_source(FakeRepo, true, fn ->
+          Application.get_env(:bot_army_library_runtime_test, FakeRepo)[:migration_source]
+        end)
+
+      assert source == "runtime_schema_migrations"
+    end
+
+    test "restores the previous repo config afterwards" do
+      Application.put_env(:bot_army_library_runtime_test, FakeRepo, database: "ergon_test")
+
+      MigrationRunner.with_migration_source(FakeRepo, true, fn -> :ok end)
+
+      assert Application.get_env(:bot_army_library_runtime_test, FakeRepo) == [
+               database: "ergon_test"
+             ]
+    end
+
+    test "restores the previous repo config when the callback raises" do
+      Application.put_env(:bot_army_library_runtime_test, FakeRepo, database: "ergon_test")
+
+      assert_raise RuntimeError, fn ->
+        MigrationRunner.with_migration_source(FakeRepo, true, fn -> raise "boom" end)
+      end
+
+      assert Application.get_env(:bot_army_library_runtime_test, FakeRepo) == [
+               database: "ergon_test"
+             ]
+    end
+
+    test "leaves the repo config alone for bot migrations" do
+      Application.put_env(:bot_army_library_runtime_test, FakeRepo, database: "ergon_test")
+
+      source =
+        MigrationRunner.with_migration_source(FakeRepo, false, fn ->
+          Application.get_env(:bot_army_library_runtime_test, FakeRepo)[:migration_source]
+        end)
+
+      assert source == nil
+    end
+  end
+
   describe "migration_versions/1" do
     test "parses versions and sorts ascending", %{path: path} do
       touch(path, "20260512000002_create_intent_threshold_adjustments.exs")

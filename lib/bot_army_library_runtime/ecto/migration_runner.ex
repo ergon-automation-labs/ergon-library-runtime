@@ -176,17 +176,17 @@ defmodule BotArmyLibraryRuntime.Ecto.MigrationRunner do
   end
 
   defp migrate_path(repo_module, display_name, path, direction, runtime?, runtime_versions) do
-    opts =
-      if runtime?,
-        do: [all: true, migration_source: @runtime_migration_source],
-        else: [all: true]
-
     runner = fn repo ->
       if runtime?, do: adopt_legacy_runtime_versions(repo, runtime_versions)
-      Ecto.Migrator.run(repo_module, path, direction, opts)
+      Ecto.Migrator.run(repo_module, path, direction, all: true)
     end
 
-    case Ecto.Migrator.with_repo(repo_module, runner) do
+    result =
+      with_migration_source(repo_module, runtime?, fn ->
+        Ecto.Migrator.with_repo(repo_module, runner)
+      end)
+
+    case result do
       {:ok, migrations_run, _} ->
         IO.puts("✓ [#{display_name}] #{length(migrations_run)} migrations #{direction}")
         :ok
@@ -194,6 +194,32 @@ defmodule BotArmyLibraryRuntime.Ecto.MigrationRunner do
       {:error, reason} ->
         IO.puts("✗ [#{display_name}] Migration failed: #{inspect(reason)}")
         {:error, reason}
+    end
+  end
+
+  @doc false
+  # `:migration_source` is read off the repo's config, not from the options
+  # given to `Ecto.Migrator.run/4`. Passing it there was silently ignored, so
+  # runtime migrations kept landing in `schema_migrations` while
+  # `runtime_schema_migrations` only ever held the adopted legacy versions.
+  # The repo reads its config when it starts, so the override has to be in
+  # place before `Ecto.Migrator.with_repo/2` boots it.
+  def with_migration_source(_repo_module, false, fun), do: fun.()
+
+  def with_migration_source(repo_module, true, fun) do
+    otp_app = repo_module.config()[:otp_app]
+    previous = Application.get_env(otp_app, repo_module, [])
+
+    Application.put_env(
+      otp_app,
+      repo_module,
+      Keyword.put(previous, :migration_source, @runtime_migration_source)
+    )
+
+    try do
+      fun.()
+    after
+      Application.put_env(otp_app, repo_module, previous)
     end
   end
 
