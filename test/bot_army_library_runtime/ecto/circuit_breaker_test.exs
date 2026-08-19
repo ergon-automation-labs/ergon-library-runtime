@@ -26,6 +26,19 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerTest do
     :ok
   end
 
+  test "runs the query unprotected when the breaker process is not registered" do
+    # Release `eval` tasks (migrations) run without the supervision tree, so the
+    # breaker is absent. That must not read as "database unavailable".
+    pid = Process.whereis(CircuitBreaker)
+    Process.unregister(CircuitBreaker)
+
+    try do
+      assert CircuitBreaker.call(fn -> :ran end) == {:ok, :ran}
+    after
+      Process.register(pid, CircuitBreaker)
+    end
+  end
+
   test "circuit starts in closed state" do
     state = CircuitBreaker.get_state()
     assert state.state == :closed

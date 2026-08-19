@@ -78,11 +78,7 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
       do_call(fun)
     else
       # Circuit breaker disabled, execute directly
-      try do
-        {:ok, fun.()}
-      rescue
-        e -> {:error, e}
-      end
+      run_unprotected(fun)
     end
   end
 
@@ -159,7 +155,16 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
         {:error, {:circuit_open, retry_after}}
     end
   catch
-    :exit, _ -> {:error, :circuit_breaker_unavailable}
+    # No breaker process to ask: release `eval` tasks (migrations) and the window
+    # around a supervisor restart. A missing breaker means no protection, not a
+    # dead database, so run the query rather than reporting the DB unavailable.
+    :exit, _ -> run_unprotected(fun)
+  end
+
+  defp run_unprotected(fun) do
+    {:ok, fun.()}
+  rescue
+    e -> {:error, e}
   end
 
   # GenServer callbacks
