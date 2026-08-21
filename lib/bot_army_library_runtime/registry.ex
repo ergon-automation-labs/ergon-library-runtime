@@ -106,7 +106,26 @@ defmodule BotArmyLibraryRuntime.Registry do
       when is_binary(bot_name) and is_list(subjects) do
     GenServer.cast(
       __MODULE__,
-      {:register, bot_name, subjects, version, deployment_status, category}
+      {:register, bot_name, subjects, version, deployment_status, category, nil, nil}
+    )
+  end
+
+  @spec register(binary(), list(), binary(), binary(), binary(), binary()) :: :ok
+  def register(bot_name, subjects, version, deployment_status, category, machine_name)
+      when is_binary(bot_name) and is_list(subjects) do
+    GenServer.cast(
+      __MODULE__,
+      {:register, bot_name, subjects, version, deployment_status, category, machine_name, nil}
+    )
+  end
+
+  @spec register(binary(), list(), binary(), binary(), binary(), binary(), binary()) :: :ok
+  def register(bot_name, subjects, version, deployment_status, category, machine_name, log_path)
+      when is_binary(bot_name) and is_list(subjects) do
+    GenServer.cast(
+      __MODULE__,
+      {:register, bot_name, subjects, version, deployment_status, category, machine_name,
+       log_path}
     )
   end
 
@@ -286,10 +305,26 @@ defmodule BotArmyLibraryRuntime.Registry do
 
   @impl true
   def handle_cast({:register, bot_name, subjects, version, deployment_status, category}, state) do
+    handle_cast(
+      {:register, bot_name, subjects, version, deployment_status, category, nil, nil},
+      state
+    )
+  end
+
+  @impl true
+  def handle_cast(
+        {:register, bot_name, subjects, version, deployment_status, category, machine_name,
+         log_path},
+        state
+      ) do
     now_unix_ms = System.system_time(:millisecond)
     resolved_version = version || "unknown"
     resolved_status = deployment_status || "deployed"
     resolved_category = category || infer_category(bot_name)
+    resolved_machine = machine_name || System.get_env("BOT_NODE") || "unknown"
+
+    resolved_log_path =
+      log_path || System.get_env("BOT_LOG_PATH") || "/var/log/bot_army/#{bot_name}.log"
 
     state =
       upsert_bot_entry(
@@ -299,6 +334,8 @@ defmodule BotArmyLibraryRuntime.Registry do
         resolved_version,
         resolved_status,
         resolved_category,
+        resolved_machine,
+        resolved_log_path,
         now_unix_ms
       )
 
@@ -313,7 +350,7 @@ defmodule BotArmyLibraryRuntime.Registry do
     )
 
     Logger.info(
-      "[Registry] Bot registered: #{bot_name} v#{resolved_version} (#{resolved_status}) category=#{resolved_category} with #{length(entry.subjects)} subjects"
+      "[Registry] Bot registered: #{bot_name} v#{resolved_version} (#{resolved_status}) category=#{resolved_category} machine=#{resolved_machine} with #{length(entry.subjects)} subjects"
     )
 
     {:noreply, state}
@@ -635,6 +672,8 @@ defmodule BotArmyLibraryRuntime.Registry do
       "version" => Map.get(entry, :version, "unknown"),
       "deployment_status" => Map.get(entry, :deployment_status, "deployed"),
       "category" => Map.get(entry, :category, "bot"),
+      "machine_name" => Map.get(entry, :machine_name, "unknown"),
+      "log_path" => Map.get(entry, :log_path, "/var/log/bot_army/#{entry.name}.log"),
       "registered_at" =>
         entry.registered_at |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601(),
       "last_heartbeat" =>
@@ -1012,6 +1051,30 @@ defmodule BotArmyLibraryRuntime.Registry do
          category,
          heartbeat_at_unix_ms
        ) do
+    upsert_bot_entry(
+      state,
+      bot_name,
+      subjects,
+      version,
+      deployment_status,
+      category,
+      nil,
+      nil,
+      heartbeat_at_unix_ms
+    )
+  end
+
+  defp upsert_bot_entry(
+         state,
+         bot_name,
+         subjects,
+         version,
+         deployment_status,
+         category,
+         machine_name,
+         log_path,
+         heartbeat_at_unix_ms
+       ) do
     now_monotonic = System.monotonic_time(:millisecond)
     existing_entry = Map.get(state.bots, bot_name)
 
@@ -1026,6 +1089,8 @@ defmodule BotArmyLibraryRuntime.Registry do
       version: version || "unknown",
       deployment_status: deployment_status || "deployed",
       category: resolved_category,
+      machine_name: machine_name || "unknown",
+      log_path: log_path || "/var/log/bot_army/#{bot_name}.log",
       subjects: normalized_subjects,
       last_heartbeat_monotonic_ms: now_monotonic,
       last_heartbeat_at: heartbeat_at_unix_ms,
