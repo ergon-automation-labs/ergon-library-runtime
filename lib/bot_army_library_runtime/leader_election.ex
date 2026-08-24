@@ -64,6 +64,7 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
   end
 
   @doc "Parses a `<SERVICE>_NODE_ROLE` env var (\"primary\"/\"standby\") into `:primary` | `:standby`, defaulting to `:primary`."
+  @spec role_from_env(String.t()) :: :primary | :standby
   def role_from_env(env_var) do
     case System.get_env(env_var) do
       "standby" -> :standby
