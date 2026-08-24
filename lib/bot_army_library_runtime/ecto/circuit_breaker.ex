@@ -11,7 +11,9 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
   States:
   - `:closed` — normal operation, queries pass through
   - `:open` — too many failures, queries are rejected immediately
-  - `:half_open` — timeout expired, allowing a single probe query
+  - `:half_open` — timeout expired, allowing a single probe query bounded by
+    `probe_timeout_ms`; a probe that doesn't finish in time counts as a
+    failure and reopens the circuit, same as a raised error would
 
   ## Configuration
 
@@ -130,26 +132,10 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
   defp do_call(fun) do
     case GenServer.call(__MODULE__, :check, 1000) do
       :ok ->
-        try do
-          result = fun.()
-          GenServer.cast(__MODULE__, :success)
-          {:ok, result}
-        rescue
-          e in Postgrex.Error ->
-            GenServer.cast(__MODULE__, {:failure, :database_error})
-            {:error, e}
+        protected_call(fun)
 
-          e ->
-            GenServer.cast(__MODULE__, {:failure, :unknown})
-            {:error, e}
-        catch
-          # A pool shutdown exits rather than raising. Without this it would be
-          # caught below as :circuit_breaker_unavailable and never counted as
-          # the database failure it is.
-          :exit, reason ->
-            GenServer.cast(__MODULE__, {:failure, :database_error})
-            {:error, {:exit, reason}}
-        end
+      {:probe, probe_timeout_ms} ->
+        probed_call(fun, probe_timeout_ms)
 
       {:open, retry_after} ->
         {:error, {:circuit_open, retry_after}}
@@ -159,6 +145,46 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
     # around a supervisor restart. A missing breaker means no protection, not a
     # dead database, so run the query rather than reporting the DB unavailable.
     :exit, _ -> run_unprotected(fun)
+  end
+
+  defp protected_call(fun) do
+    result = fun.()
+    GenServer.cast(__MODULE__, :success)
+    {:ok, result}
+  rescue
+    e in Postgrex.Error ->
+      GenServer.cast(__MODULE__, {:failure, :database_error})
+      {:error, e}
+
+    e ->
+      GenServer.cast(__MODULE__, {:failure, :unknown})
+      {:error, e}
+  catch
+    # A pool shutdown exits rather than raising. Without this it would be
+    # caught below as :circuit_breaker_unavailable and never counted as
+    # the database failure it is.
+    :exit, reason ->
+      GenServer.cast(__MODULE__, {:failure, :database_error})
+      {:error, {:exit, reason}}
+  end
+
+  # A half-open probe must not hang the caller (or the circuit) forever — that
+  # would defeat the point of failing fast. Run it in its own process so a
+  # stuck query can be abandoned at probe_timeout_ms instead of blocking. The
+  # wrapped call always returns a value (never raises/exits) so a slow probe
+  # can't crash this process via the Task link before the timeout fires.
+  defp probed_call(fun, timeout_ms) do
+    task = Task.async(fn -> protected_call(fun) end)
+
+    case Task.yield(task, timeout_ms) do
+      {:ok, result} ->
+        result
+
+      nil ->
+        Task.shutdown(task, :brutal_kill)
+        GenServer.cast(__MODULE__, {:failure, :probe_timeout})
+        {:error, {:probe_timeout, timeout_ms}}
+    end
   end
 
   defp run_unprotected(fun) do
@@ -187,7 +213,8 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
 
     %{
       failure_threshold: Keyword.get(env, :failure_threshold, @failure_threshold),
-      half_open_timeout_ms: Keyword.get(env, :half_open_timeout_ms, @half_open_timeout_ms)
+      half_open_timeout_ms: Keyword.get(env, :half_open_timeout_ms, @half_open_timeout_ms),
+      probe_timeout_ms: Keyword.get(env, :probe_timeout_ms, @probe_timeout_ms)
     }
   end
 
@@ -207,14 +234,14 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreaker do
             "[DB CircuitBreaker] Transitioning to half-open after #{elapsed}ms, allowing probe"
           )
 
-          {:reply, :ok, %{state | circuit_state: :half_open}}
+          {:reply, {:probe, state.config.probe_timeout_ms}, %{state | circuit_state: :half_open}}
         else
           retry_after = state.config.half_open_timeout_ms - elapsed
           {:reply, {:open, retry_after}, state}
         end
 
       :half_open ->
-        {:reply, :ok, state}
+        {:reply, {:probe, state.config.probe_timeout_ms}, state}
     end
   end
 

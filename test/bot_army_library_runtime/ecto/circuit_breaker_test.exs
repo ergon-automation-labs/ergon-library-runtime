@@ -118,4 +118,35 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerTest do
     result = CircuitBreaker.call(fn -> {:ok, "success"} end)
     assert {:error, {:circuit_open, _}} = result
   end
+
+  test "probe times out instead of hanging forever" do
+    Application.put_env(:bot_army_library_runtime, :db_circuit_breaker,
+      enabled: true,
+      failure_threshold: 3,
+      half_open_timeout_ms: 500,
+      probe_timeout_ms: 100
+    )
+
+    CircuitBreaker.reset()
+    Process.sleep(100)
+
+    # Open the circuit
+    for _ <- 1..3 do
+      CircuitBreaker.call(fn -> raise Postgrex.Error, message: "connection refused" end)
+    end
+
+    # Wait for half-open
+    Process.sleep(600)
+
+    start = System.monotonic_time(:millisecond)
+    result = CircuitBreaker.call(fn -> Process.sleep(1000) end)
+    elapsed = System.monotonic_time(:millisecond) - start
+
+    assert {:error, {:probe_timeout, 100}} = result
+    assert elapsed < 1000
+
+    # The failed probe should have reopened the circuit
+    result = CircuitBreaker.call(fn -> {:ok, "success"} end)
+    assert {:error, {:circuit_open, _}} = result
+  end
 end
