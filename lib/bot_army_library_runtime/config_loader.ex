@@ -23,16 +23,19 @@ defmodule BotArmyLibraryRuntime.ConfigLoader do
   """
   def load_config do
     config_file = config_file_path()
+    IO.puts(:stderr, "[ConfigLoader] Attempting to load config from: #{config_file}")
 
     if File.exists?(config_file) do
       Logger.info("[ConfigLoader] Loading config from #{config_file}")
+      IO.puts(:stderr, "[ConfigLoader] File exists, attempting to parse...")
 
       case load_file(config_file) do
         {:ok, config} ->
-          Logger.info(
-            "[ConfigLoader] Loaded #{map_size(config)} config values from #{config_file}"
-          )
+          count = if is_map(config), do: map_size(config), else: 0
 
+          Logger.info("[ConfigLoader] Loaded #{count} config values from #{config_file}")
+
+          IO.puts(:stderr, "[ConfigLoader] ✓ Successfully loaded #{count} values")
           config
 
         {:error, reason} ->
@@ -40,6 +43,7 @@ defmodule BotArmyLibraryRuntime.ConfigLoader do
             "[ConfigLoader] Failed to load #{config_file}: #{inspect(reason)}, falling back to env vars"
           )
 
+          IO.puts(:stderr, "[ConfigLoader] ✗ Failed to parse: #{inspect(reason)}")
           %{}
       end
     else
@@ -47,6 +51,7 @@ defmodule BotArmyLibraryRuntime.ConfigLoader do
         "[ConfigLoader] Config file not found at #{config_file}, using env vars (development mode)"
       )
 
+      IO.puts(:stderr, "[ConfigLoader] Config file NOT FOUND at #{config_file}")
       %{}
     end
   end
@@ -119,17 +124,35 @@ defmodule BotArmyLibraryRuntime.ConfigLoader do
   defp load_file(path) do
     case File.read(path) do
       {:ok, content} ->
+        IO.puts(:stderr, "[ConfigLoader] Read #{byte_size(content)} bytes from #{path}")
+
         # Parse Elixir config file format
         try do
           # Use Code.eval_string carefully - config file should only contain a map literal
+          IO.puts(:stderr, "[ConfigLoader] Parsing Elixir code with Code.eval_string...")
           {config, _bindings} = Code.eval_string(content, [])
-          {:ok, config}
+
+          case config do
+            m when is_map(m) ->
+              IO.puts(:stderr, "[ConfigLoader] ✓ Parsed as map with #{map_size(m)} keys")
+              {:ok, config}
+
+            other ->
+              IO.puts(
+                :stderr,
+                "[ConfigLoader] ✗ Parsed but not a map, got: #{inspect(other, limit: 50)}"
+              )
+
+              {:error, "Expected map, got #{inspect(other)}"}
+          end
         rescue
           e ->
+            IO.puts(:stderr, "[ConfigLoader] ✗ Exception during parsing: #{inspect(e)}")
             {:error, "Failed to parse config file: #{inspect(e)}"}
         end
 
       {:error, reason} ->
+        IO.puts(:stderr, "[ConfigLoader] ✗ Failed to read file: #{inspect(reason)}")
         {:error, reason}
     end
   end
