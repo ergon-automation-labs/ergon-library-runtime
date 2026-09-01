@@ -172,7 +172,8 @@ defmodule BotArmyLibraryRuntime.Heartbeat do
   defp do_persist(repo, attrs, start_mono, telemetry?) do
     # DEBUG: Log the actual repo and database being used
     try do
-      db_name = repo.query!("SELECT current_database();") |> List.first() |> List.first()
+      result = repo.query!("SELECT current_database();")
+      db_name = result.rows |> List.first() |> List.first()
       Logger.warning("[DEBUG] Heartbeat persisting using repo #{inspect(repo)} on database #{inspect(db_name)}")
     rescue
       e -> Logger.error("[DEBUG] Failed to get current database: #{inspect(e)}")
