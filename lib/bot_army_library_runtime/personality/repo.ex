@@ -9,12 +9,19 @@ defmodule BotArmyLibraryRuntime.Personality.Repo do
   """
   @spec resolve(module() | nil) :: module()
   def resolve(nil) do
-    Application.get_env(:bot_army_library_runtime, :personality_repo) ||
-      first_bot_repo() ||
-      BotArmyLibraryRuntime.Ecto.Repo
+    resolved =
+      Application.get_env(:bot_army_library_runtime, :personality_repo) ||
+        first_bot_repo() ||
+        BotArmyLibraryRuntime.Ecto.Repo
+
+    Logger.warning("[DEBUG] PersonalityRepo.resolve(nil) returned #{inspect(resolved)}")
+    resolved
   end
 
-  def resolve(repo) when is_atom(repo), do: repo
+  def resolve(repo) when is_atom(repo) do
+    Logger.warning("[DEBUG] PersonalityRepo.resolve(#{inspect(repo)}) returned #{inspect(repo)}")
+    repo
+  end
 
   @doc false
   @spec available?(module()) :: boolean()
