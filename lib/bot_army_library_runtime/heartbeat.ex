@@ -5,6 +5,7 @@ defmodule BotArmyLibraryRuntime.Heartbeat do
   Rows are upserted on each publish so restarts and boot announcements can read
   the last known liveness from PostgreSQL instead of relying on NATS alone.
   """
+  require Logger
 
   use Ecto.Schema
 

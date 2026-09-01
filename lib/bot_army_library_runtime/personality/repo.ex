@@ -1,5 +1,6 @@
 defmodule BotArmyLibraryRuntime.Personality.Repo do
   @moduledoc false
+  require Logger
 
   @doc """
   Resolves the Ecto repo for soul and heartbeat persistence.
