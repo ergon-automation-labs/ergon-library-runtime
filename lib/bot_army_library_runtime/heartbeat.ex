@@ -169,6 +169,14 @@ defmodule BotArmyLibraryRuntime.Heartbeat do
   end
 
   defp do_persist(repo, attrs, start_mono, telemetry?) do
+    # DEBUG: Log the actual repo and database being used
+    try do
+      db_name = repo.query!("SELECT current_database();") |> List.first() |> List.first()
+      Logger.info("[DEBUG] Heartbeat persisting using repo #{inspect(repo)} on database #{inspect(db_name)}")
+    rescue
+      e -> Logger.error("[DEBUG] Failed to get current database: #{inspect(e)}")
+    end
+
     {:ok, id} = Ecto.UUID.dump(Ecto.UUID.generate())
 
     query = """
