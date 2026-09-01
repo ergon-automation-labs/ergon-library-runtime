@@ -103,48 +103,6 @@ health-check:
 		fi; \
 	done
 
-release:
-	@echo "==============================================="
-	@echo "Building OTP release"
-	@echo "==============================================="
-	rm -rf _build/prod/rel/bot_army_library_runtime
-	MIX_ENV=prod $(MIX) release
-
-publish-release: release
-	@echo "==============================================="
-	@echo "Publishing release to GitHub"
-	@echo "==============================================="
-	@echo ""
-
-	@set -e; \
-	VERSION=$$(sed -n 's/^[[:space:]]*version:[[:space:]]*"\([^"]*\)".*/\1/p' mix.exs | head -n 1); \
-	if [ -z "$$VERSION" ]; then \
-		echo "Failed to resolve version from mix.exs"; \
-		exit 1; \
-	fi; \
-	TARBALL=bot_army_library_runtime-$$VERSION.tar.gz; \
-	echo "Version: $$VERSION"; \
-	echo "Creating release tarball..."; \
-	tar -czf "$$TARBALL" -C _build/prod/rel bot_army_library_runtime/; \
-	echo "✓ Tarball created: $$TARBALL"; \
-	echo ""; \
-	echo "Creating GitHub release v$$VERSION..."; \
-	if gh release view "v$$VERSION" >/dev/null 2>&1; then \
-		gh release upload "v$$VERSION" "$$TARBALL" --clobber; \
-	else \
-		gh release create "v$$VERSION" "$$TARBALL" \
-			--title "Release v$$VERSION" \
-			--notes "Bot Army Runtime Elixir release v$$VERSION." \
-			--draft=false; \
-	fi; \
-	echo "✓ Release published to GitHub"
-
-.DEFAULT_GOAL := help
-
-
-push-and-publish: git-push
-	@$(MAKE) publish-release
-
 # Shared targets (push, credo, pre-push-cleanup, bump-version, git-push).
 # Defined once in bot_army_infra so they cannot drift per repo.
 BOT_ARMY_COMMON_MK := $(abspath $(CURDIR)/../bot_army_infra/make/common.mk)
@@ -153,3 +111,16 @@ $(warning bot_army_infra not found at $(BOT_ARMY_COMMON_MK) - shared targets una
 else
 include $(BOT_ARMY_COMMON_MK)
 endif
+
+# Override release targets for libraries to prevent accidental misuse
+release:
+	@echo "⚠️  Libraries do not have standalone OTP releases. Use 'make push' to update the library."
+
+publish-release:
+	@echo "⚠️  Libraries do not have GitHub releases. They are versioned dependencies. Use 'make push' to update."
+
+deploy-bot:
+	@echo "⚠️  Libraries are not deployed via Salt. They are compiled into bots. To apply library changes, redeploy the dependent bots."
+
+# Keep push-and-publish as a legacy alias but redirect to push
+push-and-publish: push
