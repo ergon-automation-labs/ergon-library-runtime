@@ -14,8 +14,8 @@ defmodule BotArmyLibraryRuntime.MemoryTest do
   end
 
   describe "record_exchange/4" do
-    test "returns skipped when no repo is running" do
-      assert :skipped =
+    test "degrades to {:error, :not_connected} with no broker (hermetic)" do
+      assert {:error, :not_connected} =
                Memory.record_exchange(
                  "session-1",
                  "What is next?",
@@ -27,8 +27,8 @@ defmodule BotArmyLibraryRuntime.MemoryTest do
   end
 
   describe "list/2" do
-    test "returns an empty list when no repo is running" do
-      assert [] =
+    test "degrades to {:error, :not_connected} with no broker (hermetic)" do
+      assert {:error, :not_connected} =
                Memory.list("session-1",
                  repo: BotArmyLibraryRuntime.Ecto.Repo,
                  telemetry: false
