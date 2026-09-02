@@ -59,6 +59,7 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
       lease_ttl_ms: 45_000                lease expiry window
       lease_renew_ms: 15_000              leader renewal cadence
       lease_probe_ms: 10_000              standby poll cadence
+      acquire_jitter_max_ms: 2_000        standby acquire-jitter ceiling
       force_ttl_ms: 900_000               force-override auto-expiry
       kv_bucket: "LEADER_ELECTION"
       heartbeat_timeout_ms: 90_000        fallback heartbeat window
@@ -158,6 +159,7 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
       on_role_change: on_role_change,
       lease_ttl_ms: Keyword.get(opts, :lease_ttl_ms, @lease_ttl_ms),
       lease_probe_ms: Keyword.get(opts, :lease_probe_ms, @lease_probe_ms),
+      acquire_jitter_max_ms: Keyword.get(opts, :acquire_jitter_max_ms, @acquire_jitter_max_ms),
       force_ttl_ms: Keyword.get(opts, :force_ttl_ms, @force_ttl_ms),
       kv_bucket: Keyword.get(opts, :kv_bucket, @kv_bucket),
       heartbeat_timeout_ms: Keyword.get(opts, :heartbeat_timeout_ms, @heartbeat_timeout_ms),
@@ -512,9 +514,7 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
       {:error, reason} ->
         # Could not renew. Only demote on CONFIRMED foreign ownership — a
         # transient network error must not flip leadership.
-        Logger.warning(
-          "[LeaderElection:#{state.service}] lease renew failed: #{inspect(reason)}"
-        )
+        Logger.warning("[LeaderElection:#{state.service}] lease renew failed: #{inspect(reason)}")
 
         confirm_or_keep(state)
     end
@@ -569,7 +569,7 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
       if state.default_role == :primary do
         0
       else
-        :rand.uniform(@acquire_jitter_max_ms)
+        :rand.uniform(state.acquire_jitter_max_ms)
       end
 
     if delay == 0 do
@@ -669,9 +669,7 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
         "service" => state.service,
         "renewed_at" => DateTime.to_iso8601(DateTime.utc_now()),
         "expires_at" =>
-          DateTime.to_iso8601(
-            DateTime.add(DateTime.utc_now(), state.lease_ttl_ms, :millisecond)
-          )
+          DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), state.lease_ttl_ms, :millisecond))
       })
 
     headers = [

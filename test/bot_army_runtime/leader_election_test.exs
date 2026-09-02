@@ -136,7 +136,8 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
     test "force override expires after force_ttl_ms", %{agent: agent} do
       # Long heartbeat window so the standby doesn't self-promote via its own
       # hysteresis while the force TTL elapses
-      start_election("test_force_ttl",
+      start_election(
+        "test_force_ttl",
         [default_role: :standby, force_ttl_ms: 50, heartbeat_timeout_ms: 30_000],
         agent
       )
@@ -145,7 +146,8 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
 
       send(
         :"Elixir.BotArmyLibraryRuntime.LeaderElection.test_force_ttl",
-        {:msg, %{topic: "bot.test_force_ttl.leader.force", body: Jason.encode!(%{"node" => "air"})}}
+        {:msg,
+         %{topic: "bot.test_force_ttl.leader.force", body: Jason.encode!(%{"node" => "air"})}}
       )
 
       assert LeaderElection.leader?("test_force_ttl") == true
@@ -209,7 +211,11 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
     end
 
     test "fresh foreign lease -> wait" do
-      assert LeaderElection.lease_decision(state_for("air", 45_000), @fresh, System.system_time(:millisecond)) ==
+      assert LeaderElection.lease_decision(
+               state_for("air", 45_000),
+               @fresh,
+               System.system_time(:millisecond)
+             ) ==
                :wait
     end
 
@@ -220,17 +226,29 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
           DateTime.utc_now() |> DateTime.add(-60_000, :millisecond) |> DateTime.to_iso8601()
       }
 
-      assert LeaderElection.lease_decision(state_for("air", 45_000), stale, System.system_time(:millisecond)) ==
+      assert LeaderElection.lease_decision(
+               state_for("air", 45_000),
+               stale,
+               System.system_time(:millisecond)
+             ) ==
                :promote
     end
 
     test "missing lease -> promote (CAS arbitrates)" do
-      assert LeaderElection.lease_decision(state_for("air", 45_000), nil, System.system_time(:millisecond)) ==
+      assert LeaderElection.lease_decision(
+               state_for("air", 45_000),
+               nil,
+               System.system_time(:millisecond)
+             ) ==
                :promote
     end
 
     test "own lease -> renew" do
-      assert LeaderElection.lease_decision(state_for("mini", 45_000), @fresh, System.system_time(:millisecond)) ==
+      assert LeaderElection.lease_decision(
+               state_for("mini", 45_000),
+               @fresh,
+               System.system_time(:millisecond)
+             ) ==
                :renew
     end
 
@@ -289,6 +307,9 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
           name: :"#{service}_#{node_name}",
           lease_ttl_ms: 300,
           lease_probe_ms: 100,
+          # Standbys wait a random 1..N ms before CAS-acquiring; shrink it so
+          # failover assertions don't race the jitter ceiling.
+          acquire_jitter_max_ms: 25,
           heartbeat_timeout_ms: 150,
           check_interval_ms: 100
         ]
