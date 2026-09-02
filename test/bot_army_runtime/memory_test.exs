@@ -11,6 +11,17 @@ defmodule BotArmyLibraryRuntime.MemoryTest do
                  telemetry: false
                )
     end
+
+    test "degrades to {:error, :not_connected} with no broker (hermetic)" do
+      assert {:error, :not_connected} =
+               Memory.append(%{"session_id" => "session-1", "note" => "carry the router"})
+    end
+  end
+
+  describe "list_entries/2" do
+    test "degrades to {:error, :not_connected} with no broker (hermetic)" do
+      assert {:error, :not_connected} = Memory.list_entries("session-1")
+    end
   end
 
   describe "record_exchange/4" do

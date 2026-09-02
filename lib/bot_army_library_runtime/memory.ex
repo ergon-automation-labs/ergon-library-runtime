@@ -73,12 +73,46 @@ defmodule BotArmyLibraryRuntime.Memory do
     }
 
     case Publisher.request("memory.list", payload) do
-      {:ok, %{"data" => history}} when is_list(history) ->
+      {:ok, %{"ok" => true, "data" => history}} when is_list(history) ->
         {:ok, history}
 
-      {:ok, data} ->
-        # Fallback if the response shape differs but is successful
-        {:ok, data}
+      {:ok, %{"ok" => false} = envelope} ->
+        {:error, error_from(envelope)}
+
+      {:ok, other} ->
+        {:error, {:unexpected_reply, other}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Reads back the general entries appended to a scope via `append/2`.
+
+  ## Arguments
+    - `scope` - The scope/session the entries were appended under
+    - `opts` - Optional keyword list (e.g., `:tenant_id`, `:kind`, `:limit`)
+
+  ## Returns
+    - `{:ok, entries}` - Oldest-first list of entry maps
+    - `{:error, reason}` - Request failed or timed out
+  """
+  def list_entries(scope, opts \\ []) do
+    payload = %{
+      "scope" => scope,
+      "opts" => filter_json_opts(opts)
+    }
+
+    case Publisher.request("memory.entries", payload) do
+      {:ok, %{"ok" => true, "data" => entries}} when is_list(entries) ->
+        {:ok, entries}
+
+      {:ok, %{"ok" => false} = envelope} ->
+        {:error, error_from(envelope)}
+
+      {:ok, other} ->
+        {:error, {:unexpected_reply, other}}
 
       {:error, reason} ->
         {:error, reason}
@@ -103,6 +137,15 @@ defmodule BotArmyLibraryRuntime.Memory do
 
     Publisher.publish("memory.clear", payload)
   end
+
+  defp error_from(%{"error" => msg, "code" => code}) do
+    case code do
+      "missing_scope" -> :missing_scope
+      _ -> {:service_error, msg}
+    end
+  end
+
+  defp error_from(envelope), do: {:service_error, Map.get(envelope, "error", "unknown")}
 
   defp filter_json_opts(opts) do
     # Remove non-serializable options like :repo or :telemetry
