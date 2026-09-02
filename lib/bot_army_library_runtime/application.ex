@@ -37,6 +37,10 @@ defmodule BotArmyLibraryRuntime.Application do
         # Configuration read from :bot_army_library_runtime, :nats in config/runtime.exs
         {BotArmyLibraryRuntime.NATS.Connection, []},
 
+        # Army-wide kill switch (halts outgoing publishes when engaged;
+        # must start before bots begin processing so restored halt state applies)
+        {BotArmyLibraryRuntime.KillSwitch, []},
+
         # NATS message deduplication (ETS sliding window)
         {BotArmyLibraryRuntime.NATS.Dedup, []},
 

@@ -20,6 +20,7 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
 
   require Logger
 
+  alias BotArmyLibraryRuntime.KillSwitch
   alias BotArmyLibraryRuntime.NATS.CircuitBreaker
   alias BotArmyLibraryRuntime.Tracing
   alias BotArmyLibraryRuntime.Correlation
@@ -51,13 +52,21 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
   def publish(subject, payload, opts \\ []) when is_binary(subject) and is_map(payload) do
     timeout = Keyword.get(opts, :timeout_ms, 5000)
 
-    case get_connection() do
-      {:ok, conn} ->
-        do_publish(conn, subject, payload, opts, timeout)
+    # Army-wide kill switch gate: fail fast before any connection work.
+    case KillSwitch.allowed?(subject) do
+      :ok ->
+        case get_connection() do
+          {:ok, conn} ->
+            do_publish(conn, subject, payload, opts, timeout)
 
-      {:error, reason} ->
-        log_publish_failure(subject, reason)
-        {:error, reason}
+          {:error, reason} ->
+            log_publish_failure(subject, reason)
+            {:error, reason}
+        end
+
+      {:halted, info} ->
+        KillSwitch.report_blocked(subject, info)
+        {:error, {:kill_switch_engaged, info}}
     end
   end
 
@@ -90,22 +99,30 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
     retry_base_ms = Keyword.get(opts, :retry_base_ms, 100)
     cb_key = Keyword.get(opts, :circuit_breaker_key)
 
-    case get_connection() do
-      {:ok, conn} ->
-        do_request_with_retry(
-          conn,
-          subject,
-          payload,
-          timeout_ms,
-          max_retries,
-          retry_base_ms,
-          cb_key,
-          0
-        )
+    # Army-wide kill switch gate: fail fast before any connection work.
+    case KillSwitch.allowed?(subject) do
+      :ok ->
+        case get_connection() do
+          {:ok, conn} ->
+            do_request_with_retry(
+              conn,
+              subject,
+              payload,
+              timeout_ms,
+              max_retries,
+              retry_base_ms,
+              cb_key,
+              0
+            )
 
-      {:error, reason} ->
-        log_request_failure(subject, reason)
-        {:error, reason}
+          {:error, reason} ->
+            log_request_failure(subject, reason)
+            {:error, reason}
+        end
+
+      {:halted, info} ->
+        KillSwitch.report_blocked(subject, info)
+        {:error, {:kill_switch_engaged, info}}
     end
   end
 
@@ -300,6 +317,10 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
     |> GenServer.call(:get_connection, timeout_ms)
   rescue
     _e -> {:error, :no_connection_manager}
+  catch
+    # Connection GenServer not running (e.g. tests, boot ordering) — exits,
+    # not raises, so catch both
+    :exit, _ -> {:error, :no_connection_manager}
   end
 
   # Logging helpers
