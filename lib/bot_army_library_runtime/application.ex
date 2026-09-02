@@ -40,6 +40,9 @@ defmodule BotArmyLibraryRuntime.Application do
         # NATS message deduplication (ETS sliding window)
         {BotArmyLibraryRuntime.NATS.Dedup, []},
 
+        # Subject metrics tracking (counts subject calls across the ecosystem)
+        {BotArmyLibraryRuntime.SubjectMetrics, []},
+
         # Defer rate limiter (ETS-based, prevents spamming LLM on repeated defers)
         {BotArmyLibraryRuntime.Intent.DeferRateLimiter, []},
 

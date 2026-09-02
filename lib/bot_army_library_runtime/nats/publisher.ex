@@ -120,15 +120,20 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
 
       Gnat.pub(conn, subject, json_payload, headers: headers)
 
+      # Track subject metrics
+      BotArmyLibraryRuntime.SubjectMetrics.increment(subject)
+
       log_publish_success(subject, payload)
       {:ok, subject}
     rescue
       e in Jason.EncodeError ->
         log_encode_error(subject, payload, e)
+        BotArmyLibraryRuntime.SubjectMetrics.record_failure(subject)
         {:error, {:encode_error, e.message}}
 
       e ->
         log_publish_exception(subject, e)
+        BotArmyLibraryRuntime.SubjectMetrics.record_failure(subject)
         {:error, {:exception, Exception.message(e)}}
     end
   end
@@ -189,11 +194,13 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
     case do_request(conn, subject, payload, timeout_ms) do
       {:ok, reply} ->
         if cb_key, do: CircuitBreaker.record_success(cb_key)
+        BotArmyLibraryRuntime.SubjectMetrics.increment(subject)
         emit_retry_telemetry(subject, attempt, :success, nil, cb_key)
         {:ok, reply}
 
       {:error, :timeout} = err ->
         if cb_key, do: CircuitBreaker.record_failure(cb_key, :timeout)
+        BotArmyLibraryRuntime.SubjectMetrics.record_failure(subject)
         emit_retry_telemetry(subject, attempt, :timeout, :timeout, cb_key)
 
         if attempt < max_retries do
@@ -223,6 +230,7 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
 
       {:error, reason} = err ->
         if cb_key, do: CircuitBreaker.record_failure(cb_key, reason)
+        BotArmyLibraryRuntime.SubjectMetrics.record_failure(subject)
         emit_retry_telemetry(subject, attempt, :error, reason, cb_key)
         err
     end
