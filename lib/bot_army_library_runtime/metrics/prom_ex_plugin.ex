@@ -1,6 +1,6 @@
 defmodule BotArmyLibraryRuntime.Metrics.PromExPlugin do
   @moduledoc """
-  Custom PromEx plugin for Bot Army NATS and connection metrics.
+  Custom PromEx plugin for Bot Army NATS, connection, and circuit breaker metrics.
   """
 
   use PromEx.Plugin
@@ -35,6 +35,25 @@ defmodule BotArmyLibraryRuntime.Metrics.PromExPlugin do
             [:bot_army, :nats, :connection, :status],
             event_name: [:nats, :connection, :status],
             description: "NATS connection status (1=connected, 0=disconnected)"
+          )
+        ]
+      ),
+      Event.build(
+        :circuit_breaker_metrics,
+        [
+          Telemetry.Metrics.counter(
+            [:bot_army, :circuit_breaker, :state_changed, :total],
+            event_name: [:bot_army, :circuit_breaker, :state_changed],
+            description: "Circuit breaker state changes",
+            tags: [:key, :old_state, :new_state],
+            keep: fn %{new_state: state} -> state == :open end
+          ),
+          Telemetry.Metrics.last_value(
+            [:bot_army, :circuit_breaker, :state_open],
+            event_name: [:bot_army, :circuit_breaker, :state_changed],
+            description: "Is circuit breaker currently open (1=yes, 0=no)",
+            tags: [:key],
+            keep: fn %{new_state: state} -> state == :open end
           )
         ]
       ),

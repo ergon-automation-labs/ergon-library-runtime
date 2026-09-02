@@ -47,6 +47,8 @@ defmodule BotArmyLibraryRuntime.NATS.CircuitBreaker do
   @half_open_timeout_ms 30_000
   @rate_limit_cooldown_ms 60_000
 
+  @telemetry_prefix [:bot_army, :circuit_breaker]
+
   def child_spec(_opts) do
     %{
       id: __MODULE__,
@@ -224,6 +226,7 @@ defmodule BotArmyLibraryRuntime.NATS.CircuitBreaker do
     case state.circuit_state do
       :half_open ->
         Logger.info("[CircuitBreaker] #{state.key}: closed after successful probe")
+        emit_state_change(state.key, :half_open, :closed)
 
         {:noreply,
          %{state | circuit_state: :closed, failures: 0, opened_at: nil, cooldown_until: nil}}
@@ -246,6 +249,8 @@ defmodule BotArmyLibraryRuntime.NATS.CircuitBreaker do
       "[CircuitBreaker] #{state.key}: #{reason}, cooldown #{@rate_limit_cooldown_ms}ms"
     )
 
+    emit_state_change(state.key, state.circuit_state, :open, reason: reason)
+
     {:noreply,
      %{
        state
@@ -264,9 +269,19 @@ defmodule BotArmyLibraryRuntime.NATS.CircuitBreaker do
 
       Logger.warning("[CircuitBreaker] #{state.key}: opened after #{new_failures} failures")
 
+      emit_state_change(state.key, state.circuit_state, :open, failure_count: new_failures)
+
       {:noreply, %{state | circuit_state: :open, failures: new_failures, opened_at: now}}
     else
       {:noreply, %{state | failures: new_failures}}
     end
+  end
+
+  defp emit_state_change(key, old_state, new_state, tags \\ []) do
+    :telemetry.execute(
+      @telemetry_prefix ++ [:state_changed],
+      %{},
+      [key: key, old_state: old_state, new_state: new_state] ++ tags
+    )
   end
 end
