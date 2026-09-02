@@ -11,8 +11,12 @@ config :bot_army_library_runtime, BotArmyRuntime.Ecto.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 1
 
-# Test NATS on configurable port (default 4223, can override with NATS_PORT)
-test_nats_port = System.get_env("NATS_PORT", "4223") |> String.to_integer()
+# Hermetic by default: tests must not touch any live army broker. The default
+# port 42991 is expected to be dead, so Connection degrades to :not_connected
+# and Registry/heartbeat tests run purely in-process. Set NATS_PORT=4222 (or
+# a TestHelpers nats-server) to opt INTO broker-backed runs — never rely on
+# the default pointing at something live.
+test_nats_port = System.get_env("NATS_PORT", "42991") |> String.to_integer()
 
 config :bot_army_library_runtime, :nats,
   servers: [{"localhost", test_nats_port}],

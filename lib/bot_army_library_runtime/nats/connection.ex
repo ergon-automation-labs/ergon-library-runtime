@@ -22,12 +22,12 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
 
   ### Multi-Cluster via Environment
 
-  Set `NATS_SERVERS` as space-separated "host:port" list:
+  NOTE: `NATS_SERVERS` is accepted for compatibility, but **only the first
+  server is used** — Gnat connections are single-server. Multi-server
+  failover must be provided at the network level (e.g. HAProxy) or by
+  migrating to Gnat.ConnectionSupervisor.
 
-      export NATS_SERVERS="localhost:4222 localhost:14223"  # Primary + HA failover
-      export NATS_SERVERS="localhost:14224"                  # Background cluster
-
-  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4223).
+  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4222).
 
   ### Cluster Selection Strategy
 
@@ -54,7 +54,7 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   The connection is stored in a named GenServer under `:gnat` key.
   Publishers access it via `GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection)`.
 
-  When given multiple servers, Gnat tries them in order and uses the first available one.
+  Only the first configured server is used (Gnat connections are single-server).
 
   ## Error Handling
 
@@ -65,7 +65,7 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
 
   ## Multi-Cluster Failover
 
-  For HA setup (e.g., 4222 + 14223 behind HAProxy), the runtime doesn't need to know about failover—HAProxy handles it at the network level. Just list both servers in NATS_SERVERS and Gnat will try the first one; if it fails, it automatically tries the next.
+  For HA setup (e.g., 4222 + 14223 behind HAProxy), the runtime doesn't need to know about failover—HAProxy handles it at the network level. Point NATS_SERVERS at the HAProxy address.
   """
 
   use GenServer
@@ -73,7 +73,11 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   require Logger
 
   @name __MODULE__
-  @default_servers [{"localhost", 4223}]
+  # Production NATS. Historical note: this default was 4223, but Gnat ignored
+  # the :servers config entirely (see gnat_settings/2), so every connection
+  # actually went to Gnat's built-in default of localhost:4222. The default now
+  # matches that reality so behavior is unchanged once :servers is honored.
+  @default_servers [{"localhost", 4222}]
   @default_ping_interval 30_000
   @default_max_reconnect_attempts 10
   @default_reconnect_delay_ms 1000
@@ -93,6 +97,12 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
 
   @impl true
   def init(opts) do
+    # Trap exits: Gnat.start_link delivers connection failures as exit signals
+    # from the linked Gnat process (its init returns {:stop, reason}). Without
+    # trapping, one refused TCP connection would kill this GenServer and churn
+    # the whole supervision tree.
+    Process.flag(:trap_exit, true)
+
     nats_env = Application.get_env(:bot_army_library_runtime, :nats, []) || []
 
     state = %{
@@ -157,6 +167,18 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   end
 
   @impl true
+  # The linked Gnat process died (crash, ping timeout, refused connect). Treat
+  # it as a disconnect when it's our connection; ignore unrelated exits.
+  def handle_info({:EXIT, pid, reason}, %{connection: pid} = state) do
+    Logger.warning("[NATS] Linked Gnat connection died: #{inspect(reason)}")
+    broadcast_status(:disconnected)
+    {:noreply, %{state | connection: nil}}
+  end
+
+  def handle_info({:EXIT, _pid, _reason}, state) do
+    {:noreply, state}
+  end
+
   def handle_info({:gnat, :disconnected}, state) do
     Logger.warning("[NATS] Connection lost, attempting reconnect")
     broadcast_status(:disconnected)
@@ -213,19 +235,74 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   end
 
   defp connect(servers, ping_interval) do
-    case Gnat.start_link(%{
-           servers: servers,
-           ping_interval: ping_interval,
-           no_responders: true
-         }) do
-      {:ok, pid} ->
-        # Monitor the Gnat process so we detect crashes and handle reconnection
-        Process.monitor(pid)
-        {:ok, pid}
+    case gnat_settings(servers, ping_interval) do
+      {:ok, settings} ->
+        # Gnat's init returns {:stop, reason} when TCP connect fails, which
+        # surfaces as an EXIT (not {:error, reason}) in the calling process.
+        # Catch it so the Connection GenServer can degrade + retry instead of
+        # crashing its supervision tree.
+        case safe_gnat_start(settings) do
+          {:ok, pid} ->
+            # Monitor the Gnat process so we detect crashes and handle reconnection
+            Process.monitor(pid)
+            {:ok, pid}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp safe_gnat_start(settings) do
+    Gnat.start_link(settings)
+  rescue
+    error -> {:error, error}
+  catch
+    :exit, reason -> {:error, {:gnat_start_exit, reason}}
+  end
+
+  # Gnat.start_link/1 takes a SINGLE %{host:, port:} settings map, NOT a
+  # :servers list. Passing %{servers: [...]} made Gnat merge the unknown key
+  # over its @default_connection_settings and silently connect to
+  # localhost:4222 regardless of configuration — which is how test runs
+  # (and any misconfigured bot) joined the live army broker.
+  # Only the first server is used; a real multi-server failover needs
+  # Gnat.ConnectionSupervisor (future work).
+  defp gnat_settings([{host, port} | rest], ping_interval)
+       when is_integer(port) do
+    warn_extra_servers(rest)
+
+    {:ok,
+     %{host: host, port: port, ping_interval: ping_interval, no_responders: true}}
+  end
+
+  defp gnat_settings([%{host: host, port: port} | rest], ping_interval) do
+    warn_extra_servers(rest)
+
+    {:ok,
+     %{host: host, port: port, ping_interval: ping_interval, no_responders: true}}
+  end
+
+  defp gnat_settings([], _ping_interval), do: {:error, :no_servers}
+
+  defp gnat_settings(other, _ping_interval) do
+    Logger.error("[NATS] Unparseable servers config, not connecting",
+      servers: inspect(other)
+    )
+
+    {:error, {:invalid_servers, other}}
+  end
+
+  defp warn_extra_servers([]), do: :ok
+
+  defp warn_extra_servers(rest) do
+    Logger.warning(
+      "[NATS] #{length(rest) + 1} servers configured but Gnat connects to one; " <>
+        "using the first, ignoring: #{inspect(rest)}"
+    )
   end
 
   defp handle_connection_error(state, reason) do

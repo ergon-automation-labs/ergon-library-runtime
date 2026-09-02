@@ -18,26 +18,44 @@ defmodule BotArmyLibraryRuntime.TestHelpers do
   alias Repo
   alias Connection
   @doc """
-  Starts a NATS server on the test port (4223) for integration tests.
+  Starts a NATS server on a free ephemeral port for integration tests.
 
-  Returns `{:ok, pid}` or `{:error, reason}` if server fails to start.
+  Returns `{:ok, {pid, port}}` or `{:error, reason}` if server fails to start.
 
-  Note: This requires `nats-server` to be installed and in PATH.
+  Note: This requires `nats-server` to be installed and in PATH. The port is
+  picked per-call (never a fixed port), so tests can never collide with the
+  live army broker — historically this helper spawned nats-server on 4223,
+  the live dev broker port.
 
   ## Examples
 
-      {:ok, pid} = BotArmyLibraryRuntime.TestHelpers.start_test_nats()
+      {:ok, {pid, port}} = BotArmyLibraryRuntime.TestHelpers.start_test_nats()
       on_exit(fn -> Process.kill(pid, :sigterm) end)
   """
   def start_test_nats do
-    port = 4223
-
     case System.cmd("which", ["nats-server"]) do
       {_path, 0} ->
-        start_nats_server(port)
+        case free_port() do
+          {:ok, port} -> start_nats_server(port)
+          error -> error
+        end
 
       {_, _} ->
         {:error, "nats-server not found in PATH"}
+    end
+  end
+
+  # Ask the OS for a free port, then race to use it (tiny TOCTOU window,
+  # acceptable for tests; nats-server fails loudly if the port is taken).
+  defp free_port do
+    case :gen_tcp.listen(0, [:binary, {:active, false}]) do
+      {:ok, socket} ->
+        {:ok, port} = :inet.port(socket)
+        :gen_tcp.close(socket)
+        {:ok, port}
+
+      error ->
+        {:error, "could not find free port: #{inspect(error)}"}
     end
   end
 
@@ -170,17 +188,18 @@ defmodule BotArmyLibraryRuntime.TestHelpers do
     ]) do
       {_output, 0} ->
         Process.sleep(500)
-        {:ok, self()}
+        {:ok, {self(), port}}
 
       {error, code} ->
         {:error, "Failed to start nats-server: exit code #{code}, error: #{error}"}
     end
   end
 
-  defp stop_test_nats(_pid) do
-    # Kill any nats-server process on the test port
-    System.cmd("pkill", ["-f", "nats-server.*4223"])
+  defp stop_test_nats({pid, port}) do
+    # Kill the nats-server we started (matched on its ephemeral port)
+    System.cmd("pkill", ["-f", "nats-server.*#{port}"])
     Process.sleep(100)
+    pid
   end
 
   defp get_test_connection do
