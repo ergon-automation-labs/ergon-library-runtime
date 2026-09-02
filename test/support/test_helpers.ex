@@ -32,11 +32,11 @@ defmodule BotArmyLibraryRuntime.TestHelpers do
       {:ok, {pid, port}} = BotArmyLibraryRuntime.TestHelpers.start_test_nats()
       on_exit(fn -> Process.kill(pid, :sigterm) end)
   """
-  def start_test_nats do
+  def start_test_nats(opts \\ []) do
     case System.cmd("which", ["nats-server"]) do
       {_path, 0} ->
         case free_port() do
-          {:ok, port} -> start_nats_server(port)
+          {:ok, port} -> start_nats_server(port, opts)
           error -> error
         end
 
@@ -178,20 +178,53 @@ defmodule BotArmyLibraryRuntime.TestHelpers do
 
   # Private helpers
 
-  defp start_nats_server(port) do
-    case System.cmd("nats-server", [
-      "-p",
-      to_string(port),
-      "-D",
-      "-l",
-      "/tmp/nats_#{port}.log"
-    ]) do
-      {_output, 0} ->
-        Process.sleep(500)
-        {:ok, {self(), port}}
+  defp start_nats_server(port, opts \\ []) do
+    js_args =
+      if Keyword.get(opts, :js, false) do
+        ["-js", "-sd", "/tmp/nats_js_#{port}"]
+      else
+        []
+      end
+
+    args =
+      (["-p", to_string(port), "-D", "-l", "/tmp/nats_#{port}.log"] ++ js_args)
+      |> Enum.map(fn a -> "'" <> String.replace(a, "'", "") <> "'" end)
+      |> Enum.join(" ")
+
+    # Background it via sh: System.cmd blocks until the process exits, and
+    # nats-server runs forever. The shell redirect detaches it.
+    case System.cmd("sh", ["-c", "nats-server #{args} > /tmp/nats_#{port}.out 2>&1 & echo $!"]) do
+      {pid_str, 0} ->
+        if wait_for_tcp(port, 5_000) do
+          {:ok, {String.trim(pid_str), port}}
+        else
+          {:error, "nats-server on port #{port} did not accept TCP in 5s"}
+        end
 
       {error, code} ->
         {:error, "Failed to start nats-server: exit code #{code}, error: #{error}"}
+    end
+  end
+
+  defp wait_for_tcp(port, deadline_ms) do
+    end_at = System.monotonic_time(:millisecond) + deadline_ms
+
+    do_wait(port, end_at)
+  end
+
+  defp do_wait(port, end_at) do
+    if System.monotonic_time(:millisecond) > end_at do
+      false
+    else
+      case :gen_tcp.connect(~c"localhost", port, [:binary], 250) do
+        {:ok, socket} ->
+          :gen_tcp.close(socket)
+          true
+
+        _ ->
+          Process.sleep(100)
+          do_wait(port, end_at)
+      end
     end
   end
 
