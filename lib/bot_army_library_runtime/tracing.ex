@@ -111,6 +111,19 @@ defmodule BotArmyLibraryRuntime.Tracing do
   end
 
   @doc """
+  Returns the current span ID as a hex string, if a span is active.
+  """
+  def span_id do
+    span_ctx = Tracer.current_span_ctx()
+
+    if OpenTelemetry.Span.is_valid(span_ctx) do
+      OpenTelemetry.Span.hex_span_ctx(span_ctx).otel_span_id
+    else
+      nil
+    end
+  end
+
+  @doc """
   Adds trace context to a NATS envelope payload map.
 
   Injects a `_trace_context` field containing the current `traceparent`
