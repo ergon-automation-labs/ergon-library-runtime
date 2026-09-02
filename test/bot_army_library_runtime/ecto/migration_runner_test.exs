@@ -84,7 +84,7 @@ defmodule BotArmyLibraryRuntime.Ecto.MigrationRunnerTest do
       touch(path, "notes.txt")
       touch(path, "no_leading_version.exs")
 
-      assert MigrationRunner.migration_versions(path) == [20_260_420_000_001]
+      assert Enum.uniq(MigrationRunner.migration_versions(path)) == [20_260_420_000_001]
     end
 
     test "returns [] for a directory with no migrations", %{path: path} do

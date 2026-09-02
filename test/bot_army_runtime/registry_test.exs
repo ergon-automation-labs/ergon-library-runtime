@@ -215,7 +215,8 @@ defmodule BotArmyLibraryRuntime.RegistryTest do
     end
 
     test "returns not_found for unknown subject providers lookup" do
-      {:error, :not_found} = BotArmyLibraryRuntime.Registry.get_subject_providers("missing.subject")
+      {:error, :not_found} =
+        BotArmyLibraryRuntime.Registry.get_subject_providers("missing.subject")
     end
   end
 
