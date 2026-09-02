@@ -62,12 +62,18 @@ defmodule BotArmyLibraryRuntime.Ecto.RuntimeDbConfig do
   (fleet-wide, the existing convention) then `default`.
   """
   def pool_size(prefix, default \\ 5) do
-    env(prefix, "POOL_SIZE", "BOT_POOL_SIZE", default) |> to_int()
+    BotArmyLibraryRuntime.ConfigLoader.get(
+      "#{prefix}_POOL_SIZE",
+      fn -> BotArmyLibraryRuntime.ConfigLoader.get("BOT_POOL_SIZE", to_string(default)) end
+    )
+    |> to_int()
   end
 
   defp env(prefix, bot_suffix, generic_name, default) do
-    System.get_env("#{prefix}_#{bot_suffix}") || System.get_env(generic_name) ||
-      to_string(default)
+    BotArmyLibraryRuntime.ConfigLoader.get(
+      "#{prefix}_#{bot_suffix}",
+      fn -> BotArmyLibraryRuntime.ConfigLoader.get(generic_name, to_string(default)) end
+    )
   end
 
   defp default(defaults, key, fallback), do: Keyword.get(defaults, key, fallback)
