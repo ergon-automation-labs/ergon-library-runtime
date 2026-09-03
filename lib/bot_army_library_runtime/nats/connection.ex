@@ -27,7 +27,7 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   failover must be provided at the network level (e.g. HAProxy) or by
   migrating to Gnat.ConnectionSupervisor.
 
-  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4222).
+  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4223 — the dev broker; production 4222 is set explicitly via plist env).
 
   ### Cluster Selection Strategy
 
@@ -73,11 +73,15 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   require Logger
 
   @name __MODULE__
-  # Production NATS. Historical note: this default was 4223, but Gnat ignored
-  # the :servers config entirely (see gnat_settings/2), so every connection
-  # actually went to Gnat's built-in default of localhost:4222. The default now
-  # matches that reality so behavior is unchanged once :servers is honored.
-  @default_servers [{"localhost", 4222}]
+  # Fail-safe default: an unconfigured or misconfigured bot lands on the dev
+  # broker (4223, idle) — it runs but does not touch production data, which
+  # makes the misconfiguration visible instead of silently posting bad data
+  # to the production broker. Production access is explicit: deploy plists
+  # set NATS_PORT=4222. (Tests stay hermetic via config/test.exs = 42991.)
+  # Historical note: 0.14.68 briefly aligned this default with 4222, but that
+  # made a missing plist env silently join production; policy since is that
+  # only explicit env opts a bot into prod.
+  @default_servers [{"localhost", 4223}]
   @default_ping_interval 30_000
   @default_max_reconnect_attempts 10
   @default_reconnect_delay_ms 1000

@@ -29,7 +29,7 @@ nats_servers =
     nil ->
       # Fallback: use NATS_HOST and NATS_PORT
       nats_host = System.get_env("NATS_HOST", "localhost")
-      nats_port = System.get_env("NATS_PORT", "4222") |> String.to_integer()
+      nats_port = System.get_env("NATS_PORT", "4223") |> String.to_integer()
       [{nats_host, nats_port}]
 
     servers_string ->
@@ -40,9 +40,9 @@ nats_servers =
         case String.split(server_spec, ":") do
           [host, port_str] -> {host, String.to_integer(port_str)}
           # default port
-          [host] -> {host, 4222}
+          [host] -> {host, 4223}
           # fallback
-          _ -> {"localhost", 4222}
+          _ -> {"localhost", 4223}
         end
       end)
   end
