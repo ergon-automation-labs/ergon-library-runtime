@@ -16,7 +16,12 @@ config :bot_army_library_runtime, BotArmyRuntime.Ecto.Repo,
 # and Registry/heartbeat tests run purely in-process. Set NATS_PORT=4222 (or
 # a TestHelpers nats-server) to opt INTO broker-backed runs — never rely on
 # the default pointing at something live.
-test_nats_port = System.get_env("NATS_PORT", "42991") |> String.to_integer()
+#
+# NOTE: We force hermetic mode in test.exs (always use 42991) rather than reading
+# NATS_PORT env var, which would accidentally connect tests to live brokers when
+# NATS_PORT is set in the shell environment. Tests that need live NATS must
+# explicitly opt-in via test helper setup, not via environment variables.
+test_nats_port = 42991
 
 config :bot_army_library_runtime, :nats,
   servers: [{"localhost", test_nats_port}],
