@@ -36,7 +36,7 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
     - `payload` - Map or any JSON-serializable data
     - `opts` - Optional keyword list with:
       - `:reply_to` - Subject to expect a reply on (optional)
-      - `:timeout_ms` - Timeout for the operation (default: 5000)
+      - `:timeout_ms` - Timeout for the operation (default: 10000ms)
 
   ## Returns
 
@@ -50,7 +50,7 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
       {:ok, _} = Publisher.publish("bot.task.updated", data, reply_to: "my.reply.subject")
   """
   def publish(subject, payload, opts \\ []) when is_binary(subject) and is_map(payload) do
-    timeout = Keyword.get(opts, :timeout_ms, 5000)
+    timeout = Keyword.get(opts, :timeout_ms, 10000)
 
     # Army-wide kill switch gate: fail fast before any connection work.
     case KillSwitch.allowed?(subject) do
@@ -81,7 +81,7 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
     - `subject` - NATS subject to publish to
     - `payload` - Message payload
     - `opts` - Optional keyword list with:
-      - `:timeout_ms` - Timeout for reply (default: 5000)
+      - `:timeout_ms` - Timeout for reply (default: 10000ms, increased to reduce orphaned handlers)
       - `:max_retries` - Max retries on timeout/transient errors (default: 0)
       - `:retry_base_ms` - Base delay for exponential backoff (default: 100)
       - `:circuit_breaker_key` - Key for circuit breaker (optional, no CB if not set)
@@ -94,7 +94,7 @@ defmodule BotArmyLibraryRuntime.NATS.Publisher do
     - `{:error, reason}` - Publishing or connection failed
   """
   def request(subject, payload, opts \\ []) when is_binary(subject) and is_map(payload) do
-    timeout_ms = Keyword.get(opts, :timeout_ms, 5000)
+    timeout_ms = Keyword.get(opts, :timeout_ms, 10000)
     max_retries = Keyword.get(opts, :max_retries, 0)
     retry_base_ms = Keyword.get(opts, :retry_base_ms, 100)
     cb_key = Keyword.get(opts, :circuit_breaker_key)
