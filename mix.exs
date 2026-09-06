@@ -4,7 +4,7 @@ defmodule BotArmyLibraryRuntime.MixProject do
   def project do
     [
       app: :bot_army_library_runtime,
-      version: "0.14.71",
+      version: "0.14.72",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
