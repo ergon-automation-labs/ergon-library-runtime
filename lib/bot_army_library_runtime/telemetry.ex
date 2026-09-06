@@ -38,14 +38,14 @@ defmodule BotArmyLibraryRuntime.Telemetry do
     safe_attach(
       "ecto-query-logging",
       [:ecto, :repo, :query],
-      &handle_ecto_query/4,
+      {__MODULE__, :handle_ecto_query, []},
       nil
     )
 
     safe_attach(
       "ecto-query-error",
       [:ecto, :repo, :query, :exception],
-      &handle_ecto_error/4,
+      {__MODULE__, :handle_ecto_error, []},
       nil
     )
   end
@@ -54,14 +54,14 @@ defmodule BotArmyLibraryRuntime.Telemetry do
     safe_attach(
       "nats-publish-success",
       [:nats, :pub],
-      &handle_nats_publish/4,
+      {__MODULE__, :handle_nats_publish, []},
       nil
     )
 
     safe_attach(
       "nats-publish-error",
       [:nats, :pub, :exception],
-      &handle_nats_error/4,
+      {__MODULE__, :handle_nats_error, []},
       nil
     )
   end
@@ -70,7 +70,7 @@ defmodule BotArmyLibraryRuntime.Telemetry do
     safe_attach(
       "retry-attempt",
       [:bot_army_library_runtime, :nats, :retry, :attempt],
-      &handle_retry_attempt/4,
+      {__MODULE__, :handle_retry_attempt, []},
       nil
     )
   end
@@ -79,14 +79,14 @@ defmodule BotArmyLibraryRuntime.Telemetry do
     safe_attach(
       "ecto-query-exception-sentry",
       [:ecto, :repo, :query, :exception],
-      &handle_sentry_error/4,
+      {__MODULE__, :handle_sentry_error, []},
       nil
     )
 
     safe_attach(
       "nats-pub-exception-sentry",
       [:nats, :pub, :exception],
-      &handle_sentry_error/4,
+      {__MODULE__, :handle_sentry_error, []},
       nil
     )
   end
