@@ -28,6 +28,12 @@ defmodule BotArmyLibraryRuntime.Registry do
   @heartbeat_interval_ms 30_000
   @heartbeat_timeout_ms 5_000
   @stale_threshold_ms 40_000
+  # Re-announce locally-registered bots on this cadence. One-shot presence
+  # broadcasts race the registry's delayed NATS subscription (init schedules
+  # :setup_nats 100ms after start) and bots without a consumer-level renewal
+  # loop (scaffolds — P10 auditor fleet; para losing its leader race) were
+  # evicted by the 40s sweep before any verifier could see them.
+  @presence_rebroadcast_ms 20_000
   @registry_queue_group "bot_army.registry.query.responders"
   @registry_presence_subject "bot_army.registry.presence"
 
@@ -179,6 +185,7 @@ defmodule BotArmyLibraryRuntime.Registry do
     # Subscribe to registry query endpoints
     Process.send_after(self(), :setup_nats, 100)
     Process.send_after(self(), :heartbeat, @heartbeat_interval_ms)
+    Process.send_after(self(), :presence_rebroadcast, @presence_rebroadcast_ms)
 
     state = %{
       bots: %{},
@@ -276,6 +283,27 @@ defmodule BotArmyLibraryRuntime.Registry do
   end
 
   @impl true
+  def handle_info(:presence_rebroadcast, state) do
+    now_unix_ms = System.system_time(:millisecond)
+
+    # Re-announce locally-registered bots so any central registry keeps them
+    # past the stale sweep, and renew this node's own entries directly (the
+    # NATS round-trip may be missed — the subscription race above).
+    state =
+      Enum.reduce(state.bots, state, fn {name, entry}, acc ->
+        if entry[:local?] do
+          broadcast_presence(acc, name, entry.subjects, entry.version, now_unix_ms)
+          renew_local_entry(acc, name, now_unix_ms)
+        else
+          acc
+        end
+      end)
+
+    Process.send_after(self(), :presence_rebroadcast, @presence_rebroadcast_ms)
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info({:msg, msg}, state) do
     if msg.topic == @registry_presence_subject do
       handle_presence_message(msg, state)
@@ -338,6 +366,8 @@ defmodule BotArmyLibraryRuntime.Registry do
         resolved_log_path,
         now_unix_ms
       )
+
+    state = mark_local_entry(state, bot_name)
 
     entry = Map.fetch!(state.bots, bot_name)
 
@@ -526,7 +556,8 @@ defmodule BotArmyLibraryRuntime.Registry do
            deployment_status,
            category,
            heartbeat_at
-         )}
+         )
+         |> mark_remote_entry(bot_name)}
 
       {:ok, _} ->
         {:noreply, state}
@@ -1092,6 +1123,7 @@ defmodule BotArmyLibraryRuntime.Registry do
       machine_name: machine_name || "unknown",
       log_path: log_path || "/var/log/bot_army/#{bot_name}.log",
       subjects: normalized_subjects,
+      local?: false,
       last_heartbeat_monotonic_ms: now_monotonic,
       last_heartbeat_at: heartbeat_at_unix_ms,
       registered_at: registered_at
@@ -1100,6 +1132,40 @@ defmodule BotArmyLibraryRuntime.Registry do
     bots = Map.put(state.bots, bot_name, entry)
     capabilities = build_capability_index(%{state | bots: bots})
     %{state | bots: bots, capabilities: capabilities}
+  end
+
+  # Entries created by the LOCAL register cast — the rebroadcast loop owns
+  # these (remote presence arrivals are not re-announced by this node).
+  defp mark_local_entry(state, bot_name) do
+    case Map.get(state.bots, bot_name) do
+      nil -> state
+      entry -> %{state | bots: Map.put(state.bots, bot_name, Map.put(entry, :local?, true))}
+    end
+  end
+
+  defp mark_remote_entry(state, bot_name) do
+    case Map.get(state.bots, bot_name) do
+      nil -> state
+      entry -> %{state | bots: Map.put(state.bots, bot_name, Map.put(entry, :local?, false))}
+    end
+  end
+
+  defp renew_local_entry(state, bot_name, now_unix_ms) do
+    case Map.get(state.bots, bot_name) do
+      nil ->
+        state
+
+      entry ->
+        now_monotonic = System.monotonic_time(:millisecond)
+
+        entry = %{
+          entry
+          | last_heartbeat_monotonic_ms: now_monotonic,
+            last_heartbeat_at: now_unix_ms
+        }
+
+        %{state | bots: Map.put(state.bots, bot_name, entry)}
+    end
   end
 
   defp broadcast_presence(state, bot_name, subjects, version, heartbeat_at_unix_ms) do
