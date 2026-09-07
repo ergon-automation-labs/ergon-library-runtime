@@ -149,8 +149,12 @@ defmodule BotArmyLibraryRuntime.NATS.CircuitBreaker do
 
       [] ->
         try do
+          # start (not start_link): the caller is whichever process touches the
+          # breaker first (often BridgeConsumer mid-request). Linking would let
+          # a breaker crash kill the caller — the 2026-09-07 churn bug. An
+          # unlinked breaker that dies is simply rebuilt on next use.
           {:ok, pid} =
-            GenServer.start_link(__MODULE__, key,
+            GenServer.start(__MODULE__, key,
               name: {:via, Registry, {BotArmyLibraryRuntime.NATS.CircuitBreakerRegistry, key}}
             )
 
@@ -278,10 +282,20 @@ defmodule BotArmyLibraryRuntime.NATS.CircuitBreaker do
   end
 
   defp emit_state_change(key, old_state, new_state, tags \\ []) do
+    # telemetry metadata MUST be a map — a keyword list raises
+    # FunctionClauseError inside :telemetry.execute/3, which crashes this
+    # GenServer on every breaker state change (2026-09-07: the logs.search
+    # breaker crash-looped every 15s and, because breakers are started via
+    # start_link FROM the consumer process, each crash also killed the
+    # BridgeConsumer via the EXIT signal → full re-subscribe churn).
+    metadata =
+      %{key: key, old_state: old_state, new_state: new_state}
+      |> Map.merge(Map.new(tags))
+
     :telemetry.execute(
       @telemetry_prefix ++ [:state_changed],
       %{},
-      [key: key, old_state: old_state, new_state: new_state] ++ tags
+      metadata
     )
   end
 end
