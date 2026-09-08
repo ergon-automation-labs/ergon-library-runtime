@@ -100,7 +100,7 @@ defmodule BotArmyLibraryRuntime.SynapseHealth do
       "[SynapseHealth] Publishing envelope: source=#{source} source_node=#{source_node} triggered_by=#{triggered_by}"
     )
 
-    Logger.info("[SynapseHealth] Envelope JSON: #{String.slice(envelope_json, 0, 500)}")
+    Logger.debug("[SynapseHealth] Envelope JSON: #{String.slice(envelope_json, 0, 500)}")
 
     Publisher.publish("system.health", envelope)
   end

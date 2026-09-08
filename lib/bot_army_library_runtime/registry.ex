@@ -379,7 +379,11 @@ defmodule BotArmyLibraryRuntime.Registry do
       now_unix_ms
     )
 
-    Logger.info(
+    # 2026-09-08: demoted to debug — the 20s presence re-announce (33458ac) made
+    # this fire ~4.3k times/day/bot; the announce itself is still info-worthy only
+    # on first registration, repeats are churn. Flip back to info if debugging
+    # presence races.
+    Logger.debug(
       "[Registry] Bot registered: #{bot_name} v#{resolved_version} (#{resolved_status}) category=#{resolved_category} machine=#{resolved_machine} with #{length(entry.subjects)} subjects"
     )
 
