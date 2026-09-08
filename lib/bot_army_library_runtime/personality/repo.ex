@@ -1,6 +1,5 @@
 defmodule BotArmyLibraryRuntime.Personality.Repo do
   @moduledoc false
-  require Logger
 
   @doc """
   Resolves the Ecto repo for soul and heartbeat persistence.
@@ -15,14 +14,10 @@ defmodule BotArmyLibraryRuntime.Personality.Repo do
         first_bot_repo() ||
         BotArmyLibraryRuntime.Ecto.Repo
 
-    Logger.warning("[DEBUG] PersonalityRepo.resolve(nil) returned #{inspect(resolved)}")
     resolved
   end
 
-  def resolve(repo) when is_atom(repo) do
-    Logger.warning("[DEBUG] PersonalityRepo.resolve(#{inspect(repo)}) returned #{inspect(repo)}")
-    repo
-  end
+  def resolve(repo) when is_atom(repo), do: repo
 
   @doc false
   @spec available?(module()) :: boolean()

@@ -5,7 +5,6 @@ defmodule BotArmyLibraryRuntime.Heartbeat do
   Rows are upserted on each publish so restarts and boot announcements can read
   the last known liveness from PostgreSQL instead of relying on NATS alone.
   """
-  require Logger
 
   use Ecto.Schema
 
@@ -170,16 +169,6 @@ defmodule BotArmyLibraryRuntime.Heartbeat do
   end
 
   defp do_persist(repo, attrs, start_mono, telemetry?) do
-    # DEBUG: Log the actual repo and database being used
-    try do
-      result = repo.query!("SELECT current_database(), current_setting('port');")
-      db_name = result.rows |> List.first() |> List.first()
-      db_port = result.rows |> List.first() |> Enum.at(1)
-      Logger.warning("[DEBUG] Heartbeat persisting using repo #{inspect(repo)} on database #{inspect(db_name)} port #{inspect(db_port)}")
-    rescue
-      e -> Logger.error("[DEBUG] Failed to get current database: #{inspect(e)}")
-    end
-
     {:ok, id} = Ecto.UUID.dump(Ecto.UUID.generate())
 
     query = """
