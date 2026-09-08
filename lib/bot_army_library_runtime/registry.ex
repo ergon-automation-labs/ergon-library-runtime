@@ -266,7 +266,17 @@ defmodule BotArmyLibraryRuntime.Registry do
     cleaned_bots =
       state.bots
       |> Enum.reject(fn {_name, entry} ->
-        stale? = entry.last_heartbeat_monotonic_ms < threshold
+        # LOCAL entries are never evicted by the stale sweep. Under big-fleet
+        # load a registry GenServer can stall past 40s (scheduler pressure,
+        # GC, NATS hiccup); if the sweep dropped the local entry, the
+        # presence_rebroadcast loop (which iterates state.bots) would never
+        # re-announce it and the bot stayed offline until its container
+        # restarted — the systemic version of para's 9cc29be eviction (P10
+        # phase-04: fitness/chore missing from bots.list in the 23-bot
+        # core-full combo, RERUN15 2026-09-08). When this GenServer resumes,
+        # the next rebroadcast tick renews the timestamp and re-announces to
+        # the fleet, so liveness self-heals.
+        stale? = entry.last_heartbeat_monotonic_ms < threshold and not entry[:local?]
 
         if stale? do
           Logger.info("[Registry] Bot #{entry.name} offline (no heartbeat for 40s)")
