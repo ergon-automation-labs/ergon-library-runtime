@@ -571,7 +571,7 @@ defmodule BotArmyLibraryRuntime.Registry do
            category,
            heartbeat_at
          )
-         |> mark_remote_entry(bot_name)}
+         |> maybe_mark_remote(bot_name)}
 
       {:ok, _} ->
         {:noreply, state}
@@ -1137,7 +1137,12 @@ defmodule BotArmyLibraryRuntime.Registry do
       machine_name: machine_name || "unknown",
       log_path: log_path || "/var/log/bot_army/#{bot_name}.log",
       subjects: normalized_subjects,
-      local?: false,
+      # Preserve the ownership flag on refresh: presence echoes (including a
+      # bot's own broadcast loopback) must NOT reset a locally-owned entry to
+      # remote, or the rebroadcast loop stops announcing it and the fleet-wide
+      # view goes stale (P10 phase-04: fitness/chore evicted in core-full,
+      # RERUN15-18).
+      local?: if(existing_entry, do: Map.get(existing_entry, :local?, false), else: false),
       last_heartbeat_monotonic_ms: now_monotonic,
       last_heartbeat_at: heartbeat_at_unix_ms,
       registered_at: registered_at
@@ -1154,6 +1159,21 @@ defmodule BotArmyLibraryRuntime.Registry do
     case Map.get(state.bots, bot_name) do
       nil -> state
       entry -> %{state | bots: Map.put(state.bots, bot_name, Map.put(entry, :local?, true))}
+    end
+  end
+
+  # A presence arrival must never flip a locally-owned entry to remote: the
+  # presence subscription has no queue group, so a node receives its OWN
+  # broadcasts back. Flipping on that echo stopped the rebroadcast loop for
+  # the bot's own entry ("locally-registered" is what the loop re-announces),
+  # which then went stale everywhere and was swept out of the fleet view —
+  # bots vanished from bots.list ~90s after boot under load (P10 phase-04,
+  # RERUN15-18: fitness/chore; systemic version of para's 9cc29be).
+  # Remote entries (arrivals of genuinely other bots) still refresh normally.
+  defp maybe_mark_remote(state, bot_name) do
+    case Map.get(state.bots, bot_name) do
+      %{local?: true} -> state
+      _ -> mark_remote_entry(state, bot_name)
     end
   end
 
