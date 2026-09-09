@@ -24,18 +24,22 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerRepo do
 
   ## Result format
 
-  Every wrapped function returns a tuple:
+  The mutating callbacks — `insert/2`, `update/2`, `delete/2`, `transaction/2` —
+  return tuples:
 
-  - `{:ok, result}` — query succeeded
-  - `{:error, changeset}` — `insert`/`update`/`delete` validation failure
-  - `{:error, {:circuit_open, retry_after_ms}}` — breaker is open, query not attempted
+  - `{:ok, result}` — mutation succeeded
+  - `{:error, changeset}` — validation failure
+  - `{:error, {:circuit_open, retry_after_ms}}` — breaker is open, not attempted
   - `{:error, :database_connection_failed}` — `Postgrex.Error`
-  - `{:error, :multiple_results}` — `one/2` matched more than one row
   - `{:error, :database_error}` — any other exception
   - `{:error, :circuit_breaker_unavailable}` — breaker process not reachable
 
-  Callers must match on the tuple; a bare `Repo.all(query)` no longer returns a
-  list.
+  The read callbacks — `all/2` and `one/2` — are deliberately RAW to stay
+  compatible with standard Ecto callers: `Repo.all(query)` returns the bare
+  list and `Repo.one(query)` the struct-or-nil. When the breaker is open they
+  RAISE ("Database unavailable (circuit breaker: ...)") instead of returning a
+  tuple — the same crash-on-failure behaviour as unwrapped Ecto repos. Never
+  match `{:ok, _}` on a `Repo.all`/`Repo.one` result.
   """
 
   alias BotArmyLibraryRuntime.Ecto.CircuitBreaker
