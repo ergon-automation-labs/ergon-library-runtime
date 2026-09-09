@@ -1,0 +1,8 @@
+{
+  "coverage_tool": "ExCoveralls",
+  "coverage_options": { "treat_no_relevant_lines_as_covered": true },
+  "skip_files": [
+    "test/support",
+    "lib/bot_army_library_runtime/application.ex"
+  ]
+}

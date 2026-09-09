@@ -8,7 +8,9 @@ defmodule BotArmyLibraryRuntime.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      deps: deps()
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [coveralls: :test, "coveralls.detail": :test, "coveralls.html": :test]
     ]
   end
 
@@ -26,6 +28,7 @@ defmodule BotArmyLibraryRuntime.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
+      {:excoveralls, "~> 0.18", only: :test},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, "~> 0.17"},
       {:gnat, "~> 1.6"},
