@@ -115,4 +115,32 @@ defmodule BotArmyLibraryRuntime.Ecto.CircuitBreakerRepoTest do
       assert config[:port] == 5433
     end
   end
+  describe "guard_raw/1 — the all/one raw contract" do
+    test "returns the bare list, never {:ok, _}" do
+      assert CircuitBreakerRepo.guard_raw(fn -> [1, 2, 3] end) == [1, 2, 3]
+    end
+
+    test "returns a bare value for one/2-style queries (struct or nil)" do
+      assert CircuitBreakerRepo.guard_raw(fn -> nil end) == nil
+      assert CircuitBreakerRepo.guard_raw(fn -> %{id: 1} end) == %{id: 1}
+    end
+
+    test "raises when the breaker is open — crash-on-failure like unwrapped Ecto" do
+      for _ <- 1..3 do
+        CircuitBreakerRepo.guard(fn -> raise Postgrex.Error, message: "connection refused" end)
+      end
+
+      assert_raise RuntimeError, ~r/Database unavailable \(circuit breaker:/, fn ->
+        CircuitBreakerRepo.guard_raw(fn -> [1] end)
+      end
+    end
+
+    test "the same success is raw under guard_raw but would re-wrap under guard" do
+      # The contract that bit a fleet bot once: Repo.all must be matched as a
+      # bare list. guard_raw passing the fun's value through unchanged is the
+      # pin; guard's tuple-wrap is covered in the describe above.
+      assert CircuitBreakerRepo.guard_raw(fn -> [1] end) == [1]
+      refute match?({:ok, _}, CircuitBreakerRepo.guard_raw(fn -> [1] end))
+    end
+  end
 end
