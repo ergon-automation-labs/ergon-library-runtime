@@ -182,16 +182,33 @@ defmodule BotArmyLibraryRuntime.Registry do
   def init(_opts) do
     Logger.info("[Registry] Starting service discovery registry")
 
+    # Intervals/thresholds are app-env overridable (same defaults) so tests can
+    # shrink them and exercise the sweep/rebroadcast timing directly instead of
+    # waiting 30-40s (the old stale-sweep test was a stub for exactly this
+    # reason, which is how the presence echo-flip eviction bug hid until it
+    # ate fitness/chore in the core-full fleet).
+    heartbeat_interval_ms =
+      Application.get_env(:bot_army_library_runtime, :registry_heartbeat_interval_ms, @heartbeat_interval_ms)
+
+    presence_rebroadcast_ms =
+      Application.get_env(:bot_army_library_runtime, :registry_presence_rebroadcast_ms, @presence_rebroadcast_ms)
+
+    stale_threshold_ms =
+      Application.get_env(:bot_army_library_runtime, :registry_stale_threshold_ms, @stale_threshold_ms)
+
     # Subscribe to registry query endpoints
     Process.send_after(self(), :setup_nats, 100)
-    Process.send_after(self(), :heartbeat, @heartbeat_interval_ms)
-    Process.send_after(self(), :presence_rebroadcast, @presence_rebroadcast_ms)
+    Process.send_after(self(), :heartbeat, heartbeat_interval_ms)
+    Process.send_after(self(), :presence_rebroadcast, presence_rebroadcast_ms)
 
     state = %{
       bots: %{},
       capabilities: %{},
       nats_subscriptions: [],
-      connection: nil
+      connection: nil,
+      heartbeat_interval_ms: heartbeat_interval_ms,
+      presence_rebroadcast_ms: presence_rebroadcast_ms,
+      stale_threshold_ms: stale_threshold_ms
     }
 
     {:ok, state}
@@ -261,7 +278,7 @@ defmodule BotArmyLibraryRuntime.Registry do
   def handle_info(:heartbeat, state) do
     # Perform heartbeat checks to detect offline bots
     now = System.monotonic_time(:millisecond)
-    threshold = now - @stale_threshold_ms
+    threshold = now - state.stale_threshold_ms
 
     cleaned_bots =
       state.bots
@@ -287,7 +304,7 @@ defmodule BotArmyLibraryRuntime.Registry do
       |> Enum.into(%{})
 
     # Schedule next heartbeat
-    Process.send_after(self(), :heartbeat, @heartbeat_interval_ms)
+    Process.send_after(self(), :heartbeat, state.heartbeat_interval_ms)
 
     {:noreply, %{state | bots: cleaned_bots}}
   end
@@ -309,7 +326,7 @@ defmodule BotArmyLibraryRuntime.Registry do
         end
       end)
 
-    Process.send_after(self(), :presence_rebroadcast, @presence_rebroadcast_ms)
+    Process.send_after(self(), :presence_rebroadcast, state.presence_rebroadcast_ms)
     {:noreply, state}
   end
 

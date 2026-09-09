@@ -141,21 +141,6 @@ defmodule BotArmyLibraryRuntime.RegistryTest do
     end
   end
 
-  describe "heartbeat detection" do
-    test "cleans up stale bots after inactivity" do
-      subjects = [%{subject: "test.task.create", type: :request_reply}]
-      BotArmyLibraryRuntime.Registry.register("test_bot", subjects)
-
-      {:ok, [bot]} = BotArmyLibraryRuntime.Registry.list_bots()
-      assert bot["name"] == "test_bot"
-
-      # Manually trigger heartbeat check (in real scenario this happens every 30s)
-      # Bots older than 40s will be cleaned up
-      # For testing, we'd need to mock System.monotonic_time or wait, so we skip this for now
-      # This would be better tested with integration tests against real NATS
-    end
-  end
-
   describe "subject formatting" do
     test "formats subjects with defaults for missing fields" do
       subjects = [
