@@ -116,13 +116,16 @@ defmodule BotArmyLibraryRuntime.FleetStatePublisher do
   end
 
   defp build_state_payload(app_name) do
+    # Return the MAP — Publisher.publish/3 guards is_map(payload) and encodes
+    # internally. The old Jason.encode! here produced a binary, tripping the
+    # guard every publish interval (FunctionClauseError in the sre stage
+    # logs, 2026-09-09).
     %{
       "name" => to_string(app_name),
       "version" => get_version(),
       "pid" => System.pid(),
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
     }
-    |> Jason.encode!()
   end
 
   defp get_version do
