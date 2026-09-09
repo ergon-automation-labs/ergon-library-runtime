@@ -15,6 +15,12 @@ defmodule BotArmyLibraryRuntime.Application do
 
   @impl true
   def start(_type, _args) do
+    # Zero-touch file-log install: when running as a release with a writable
+    # /var/log/bot_army mount, mirror console logs to <RELEASE_NAME>.log —
+    # the files the sre LogWatcher greps via bridge.logs.search. No-op in
+    # dev/launchd contexts (no RELEASE_NAME) — see FileLogBackend.
+    BotArmyLibraryRuntime.FileLogBackend.install()
+
     # Note: BotArmyLibraryRuntime.Ecto.Repo is NOT started here.
     # Each bot service (bot_army_gtd, bot_army_llm, etc.) defines its own Repo
     # and is responsible for starting it. This keeps database configuration
