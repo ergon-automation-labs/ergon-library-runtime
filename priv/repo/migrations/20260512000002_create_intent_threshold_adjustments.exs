@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.Repo.Migrations.CreateIntentThresholdAdjustments do
+defmodule BotArmyLibraryRuntime.Repo.Migrations.CreateIntentThresholdAdjustments do
   @moduledoc """
   Shared runtime migration — runs automatically via
   `BotArmyLibraryRuntime.Ecto.MigrationRunner`, tracked in

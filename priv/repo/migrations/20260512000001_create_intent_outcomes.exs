@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.Repo.Migrations.CreateIntentOutcomes do
+defmodule BotArmyLibraryRuntime.Repo.Migrations.CreateIntentOutcomes do
   @moduledoc """
   Shared runtime migration — runs automatically via
   `BotArmyLibraryRuntime.Ecto.MigrationRunner`, tracked in

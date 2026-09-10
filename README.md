@@ -30,7 +30,7 @@ make test
 Configure in your service's `config.exs`:
 
 ```elixir
-config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
+config :bot_army_library_runtime, BotArmyLibraryRuntime.Ecto.Repo,
   database: "bot_army_dev",
   username: "postgres",
   password: "postgres",
@@ -48,24 +48,63 @@ config :bot_army_runtime, :nats,
 
 ```elixir
 defmodule BotArmyGTD.Repo do
-  use BotArmyRuntime.Ecto.Repo
+  use BotArmyLibraryRuntime.Ecto.Repo
 end
 
 # In your service
 result = BotArmyGTD.Repo.all(BotArmyGTD.Task)
 ```
 
+## Shared Schema Contract
+
+This library owns a set of **shared runtime migrations** in
+`priv/repo/migrations/`. `BotArmyLibraryRuntime.Ecto.MigrationRunner` applies
+them to **each bot's own database** — automatically — before the bot's own
+migrations. Bots never need to run or copy these by hand.
+
+| Migration | Creates | Written by |
+|---|---|---|
+| `20260420000001` | `souls` | `BotArmyLibraryRuntime.Soul` (bot personality; authoritative store is the memory service's DB) |
+| `20260420000003` | `memory_entries` | `BotArmyLibraryRuntime.Memory` (exchange records) |
+| `20260512000001` | `intent_outcomes` | learning / intent tracking |
+| `20260512000002` | `intent_threshold_adjustments` | learning / intent tracking |
+| `20260523000001` | `heartbeats` | `BotArmyLibraryRuntime.Heartbeat` (service health, upsert per service+tenant) |
+| `20260810000001` | (ops) `bot_army` DB role | ops migration, not a table |
+
+Rules:
+
+1. **Do NOT copy shared migrations into a bot's `priv/repo/migrations/`.**
+   The runner applies them to every bot database before the bot's own
+   migrations; a copy either fails on the existing table or is silently
+   skipped as a version collision. New bots (any bot minted from the standard
+   template) get these tables for free.
+2. **Legacy local copies** (some pre-runner bots carry one, timestamped
+   `20260604082xxx`): keep them `create_if_not_exists` and do not re-timestamp
+   them — same-version copies are deduped by the runner, different-version
+   copies with `create` would crash on a fresh database.
+3. Adding a new shared table: put the migration HERE (with the moduledoc
+   convention used by the files in this directory), bump, and every bot picks
+   it up on its next migrate.
+
+Verify a bot database has the shared tables:
+
+```sql
+SELECT table_name FROM information_schema.tables
+WHERE table_name IN ('heartbeats', 'souls', 'memory_entries',
+                     'intent_outcomes', 'intent_threshold_adjustments');
+```
+
 #### Publishing Messages
 
 ```elixir
 # Publish a message to NATS
-{:ok, "subject"} = BotArmyRuntime.NATS.Publisher.publish(
+{:ok, "subject"} = BotArmyLibraryRuntime.NATS.Publisher.publish(
   "bot.task.created",
   %{"task_id" => 123, "title" => "New Task"}
 )
 
 # Request-reply pattern
-{:ok, reply} = BotArmyRuntime.NATS.Publisher.request(
+{:ok, reply} = BotArmyLibraryRuntime.NATS.Publisher.request(
   "bot.command.process",
   %{"command" => "status"}
 )
@@ -138,19 +177,19 @@ make db-drop
 ### Core Modules
 
 - `BotArmyRuntime` - Main entry point and documentation
-- `BotArmyRuntime.Application` - Supervision tree
-- `BotArmyRuntime.Ecto.Repo` - Base repository for all services
-- `BotArmyRuntime.NATS.Connection` - NATS connection management with reconnection logic
-- `BotArmyRuntime.NATS.Publisher` - Message publishing and request-reply patterns
-- `BotArmyRuntime.Telemetry` - Logging and metrics collection
+- `BotArmyLibraryRuntime.Application` - Supervision tree
+- `BotArmyLibraryRuntime.Ecto.Repo` - Base repository for all services
+- `BotArmyLibraryRuntime.NATS.Connection` - NATS connection management with reconnection logic
+- `BotArmyLibraryRuntime.NATS.Publisher` - Message publishing and request-reply patterns
+- `BotArmyLibraryRuntime.Telemetry` - Logging and metrics collection
 
 ### Supervision Tree
 
 ```
-BotArmyRuntime.Supervisor
-├── BotArmyRuntime.Ecto.Repo (database connection pool)
-├── BotArmyRuntime.NATS.Connection (message bus connection)
-└── BotArmyRuntime.Telemetry (observability handlers)
+BotArmyLibraryRuntime.Supervisor
+├── BotArmyLibraryRuntime.Ecto.Repo (database connection pool)
+├── BotArmyLibraryRuntime.NATS.Connection (message bus connection)
+└── BotArmyLibraryRuntime.Telemetry (observability handlers)
 ```
 
 ## Related Repositories
@@ -187,7 +226,7 @@ All errors are logged for debugging.
 ### Development
 
 ```elixir
-config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
+config :bot_army_library_runtime, BotArmyLibraryRuntime.Ecto.Repo,
   database: "bot_army_dev",
   username: "postgres",
   password: "postgres",
@@ -202,7 +241,7 @@ config :bot_army_runtime, :nats,
 ### Production
 
 ```elixir
-config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
+config :bot_army_library_runtime, BotArmyLibraryRuntime.Ecto.Repo,
   database: {:system, "DB_NAME"},
   username: {:system, "DB_USER"},
   password: {:system, "DB_PASSWORD"},
@@ -225,7 +264,7 @@ config :logger,
 ### Testing
 
 ```elixir
-config :bot_army_runtime, BotArmyRuntime.Ecto.Repo,
+config :bot_army_library_runtime, BotArmyLibraryRuntime.Ecto.Repo,
   database: "bot_army_test",
   username: "postgres",
   password: "postgres",

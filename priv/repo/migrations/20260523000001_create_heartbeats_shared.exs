@@ -1,16 +1,18 @@
-defmodule BotArmyRuntime.Repo.Migrations.CreateHeartbeatsShared do
+defmodule BotArmyLibraryRuntime.Repo.Migrations.CreateHeartbeatsShared do
   use Ecto.Migration
 
   @moduledoc """
-  Shared heartbeat table for all Bot Army services.
+  Shared runtime migration — runs automatically via
+  `BotArmyLibraryRuntime.Ecto.MigrationRunner`, tracked in
+  `runtime_schema_migrations`.
 
-  This migration creates the heartbeats table used by BotArmy.Heartbeat module
-  for persisting service health status. All bots (via bot_army_library_runtime)
-  use this schema to record their latest health state to PostgreSQL.
+  Creates the heartbeats table written by `BotArmyLibraryRuntime.Heartbeat`
+  (service health status, one row per service/tenant pair via upsert on the
+  unique index). The runner applies it to every bot database before the bot's
+  own migrations.
 
-  The table structure matches BotArmy.Heartbeat schema exactly and uses
-  upserts (unique_index on service + tenant_id) to keep only the latest
-  heartbeat per service/tenant pair.
+  Do NOT copy this into a bot's own `priv/repo/migrations/`. A copy either
+  fails on an existing table or is silently skipped as a version collision.
   """
 
   def change do

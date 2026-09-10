@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.Repo.Migrations.CreateSouls do
+defmodule BotArmyLibraryRuntime.Repo.Migrations.CreateSouls do
   @moduledoc """
   Shared runtime migration — runs automatically via
   `BotArmyLibraryRuntime.Ecto.MigrationRunner`, tracked in

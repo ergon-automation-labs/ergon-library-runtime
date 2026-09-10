@@ -1,4 +1,4 @@
-defmodule BotArmyRuntime.Repo.Migrations.CreateMemoryEntries do
+defmodule BotArmyLibraryRuntime.Repo.Migrations.CreateMemoryEntries do
   @moduledoc """
   Shared runtime migration — runs automatically via
   `BotArmyLibraryRuntime.Ecto.MigrationRunner`, tracked in
