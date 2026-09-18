@@ -2,7 +2,6 @@
 
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
 
-MIX ?= /Users/abby/.local/share/mise/shims/mix
 
 help:
 	@echo "Bot Army Runtime development tasks"
