@@ -28,10 +28,6 @@ help:
 install: setup-hooks
 	$(MIX) deps.get
 
-setup-hooks:
-	@git config core.hooksPath git-hooks
-	@echo "✓ Git hooks installed (core.hooksPath = git-hooks)"
-
 _compile-impl:
 	$(MIX) compile
 
