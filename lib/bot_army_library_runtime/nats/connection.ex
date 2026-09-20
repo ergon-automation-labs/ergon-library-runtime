@@ -27,7 +27,29 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   failover must be provided at the network level (e.g. HAProxy) or by
   migrating to Gnat.ConnectionSupervisor.
 
-  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost) and `NATS_PORT` (default: 4223 — the dev broker; production 4222 is set explicitly via plist env).
+  Fallback: If `NATS_SERVERS` is not set, uses `NATS_HOST` (default: localhost)
+  and `NATS_PORT` (default: 4223 — the dev broker; production 4222 is set
+  explicitly via plist env).
+
+  ### Resolution Order (runtime)
+
+  Servers resolve, in order: the `start_link` `:servers` option → the
+  `:nats, :servers` app config → the environment → `localhost:4223`.
+
+  **The environment step is runtime-only, and `config/config.exs` is not.** A
+  release evaluates `config/config.exs` when it is *built*, so the
+  `NATS_SERVERS`/`NATS_HOST`/`NATS_PORT` reads in that file bake whatever the
+  build machine's environment happened to be. A release that takes its
+  `:nats, :servers` from that baked config therefore ignores its plist's
+  `NATS_PORT` and sits on the build-time broker (4223) however the deployment is
+  configured — the exact failure mode that left a deployed bot silent while its
+  plist said 4222.
+
+  A deployed bot must either:
+
+  1. set the `:nats` block in its own `config/runtime.exs` (evaluated at boot),
+     which is the fleet convention — see `bot_army_gtd/config/runtime.exs`; or
+  2. leave `:servers` unset, so this module's runtime fallback reads the env.
 
   ### Cluster Selection Strategy
 
@@ -81,7 +103,8 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   # Historical note: 0.14.68 briefly aligned this default with 4222, but that
   # made a missing plist env silently join production; policy since is that
   # only explicit env opts a bot into prod.
-  @default_servers [{"localhost", 4223}]
+  @default_port 4223
+  @default_servers [{"localhost", @default_port}]
   @default_ping_interval 30_000
   @default_max_reconnect_attempts 10
   @default_reconnect_delay_ms 1000
@@ -123,20 +146,90 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     {:ok, state, {:continue, :connect}}
   end
 
-  defp pick_servers(opts, nats_env) do
-    case Keyword.get(opts, :servers) do
-      nil ->
-        case Keyword.get(nats_env, :servers) do
-          nil -> @default_servers
-          list when is_list(list) and list != [] -> list
-          _ -> @default_servers
+  @doc false
+  # Resolution order: explicit opts -> app config -> environment -> default.
+  #
+  # The environment step is deliberately last so it can never override a
+  # deliberate configuration, and it is read here — at runtime — because
+  # config/config.exs is evaluated when the release is BUILT. See the moduledoc
+  # section "Resolution Order (runtime)".
+  def pick_servers(opts, nats_env) do
+    explicit_servers(Keyword.get(opts, :servers)) ||
+      explicit_servers(Keyword.get(nats_env, :servers)) ||
+      servers_from_env() ||
+      @default_servers
+  end
+
+  defp explicit_servers(list) when is_list(list) and list != [], do: list
+  defp explicit_servers(_other), do: nil
+
+  @doc false
+  # `NATS_SERVERS` (space- or comma-separated; only the first entry is used,
+  # because Gnat is single-server), else `NATS_HOST`/`NATS_PORT`. Returns nil
+  # when the environment names no broker, so the caller can fall through to the
+  # built-in default.
+  def servers_from_env do
+    case server_from_env() do
+      {host, port} -> [{host, port}]
+      nil -> nil
+    end
+  end
+
+  defp server_from_env do
+    case System.get_env("NATS_SERVERS") do
+      value when is_binary(value) ->
+        case value |> String.split([",", " "], trim: true) do
+          [first | _] -> parse_server(first) || host_port_from_env()
+          [] -> host_port_from_env()
         end
 
-      list when is_list(list) and list != [] ->
-        list
+      _ ->
+        host_port_from_env()
+    end
+  end
+
+  defp host_port_from_env do
+    host = System.get_env("NATS_HOST")
+    port = System.get_env("NATS_PORT")
+
+    cond do
+      is_binary(host) and host != "" -> {host, env_port()}
+      is_binary(port) and port != "" -> {"localhost", env_port()}
+      true -> nil
+    end
+  end
+
+  defp env_port do
+    case System.get_env("NATS_PORT") do
+      nil ->
+        @default_port
+
+      value ->
+        case Integer.parse(value) do
+          {port, ""} when port > 0 -> port
+          _ -> @default_port
+        end
+    end
+  end
+
+  defp parse_server(spec) do
+    spec = spec |> String.trim() |> String.replace_prefix("nats://", "")
+
+    case String.split(spec, ":", parts: 2) do
+      [host, ""] when host != "" ->
+        {host, env_port()}
+
+      [host, port] when host != "" ->
+        case Integer.parse(port) do
+          {port_number, ""} -> {host, port_number}
+          _ -> nil
+        end
+
+      [host] when host != "" ->
+        {host, env_port()}
 
       _ ->
-        @default_servers
+        nil
     end
   end
 
@@ -279,15 +372,13 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
        when is_integer(port) do
     warn_extra_servers(rest)
 
-    {:ok,
-     %{host: host, port: port, ping_interval: ping_interval, no_responders: true}}
+    {:ok, %{host: host, port: port, ping_interval: ping_interval, no_responders: true}}
   end
 
   defp gnat_settings([%{host: host, port: port} | rest], ping_interval) do
     warn_extra_servers(rest)
 
-    {:ok,
-     %{host: host, port: port, ping_interval: ping_interval, no_responders: true}}
+    {:ok, %{host: host, port: port, ping_interval: ping_interval, no_responders: true}}
   end
 
   defp gnat_settings([], _ping_interval), do: {:error, :no_servers}
