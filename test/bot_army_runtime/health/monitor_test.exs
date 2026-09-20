@@ -5,9 +5,11 @@ defmodule BotArmyLibraryRuntime.Health.MonitorTest do
   alias BotArmyLibraryRuntime.Health.Monitor
 
   @table :bot_army_health_monitor
+  @alert_claims :bot_army_health_alert_claims
 
   setup do
     :ets.delete_all_objects(@table)
+    :ets.delete_all_objects(@alert_claims)
     :ok
   end
 
@@ -167,6 +169,75 @@ defmodule BotArmyLibraryRuntime.Health.MonitorTest do
       Process.sleep(50)
 
       assert {:ok, {_last_seen, :healthy}} = Monitor.get_status("healthy_bot")
+    end
+  end
+
+  describe "alert vs heartbeat classification (phantom-bot loop regression)" do
+    test "an alert subject is never a heartbeat for a bot named after the event" do
+      assert Monitor.classify("bot.army.health.stale", %{"bot_id" => "recovered"}) ==
+               {:alert, "bot.army.health.stale", "recovered"}
+
+      assert Monitor.classify("bot.army.health.recovered", %{"bot_id" => "stale"}) ==
+               {:alert, "bot.army.health.recovered", "stale"}
+    end
+
+    test "real heartbeats still classify as heartbeats" do
+      assert Monitor.classify("bot.army.health.terrain", %{"status" => "healthy"}) ==
+               {:heartbeat, "terrain"}
+    end
+
+    test "phantom bot ids and ignored services never classify as heartbeats" do
+      assert Monitor.heartbeat_bot_id("bot.army.health.stale") == nil
+      assert Monitor.heartbeat_bot_id("bot.army.health.recovered") == nil
+      assert Monitor.heartbeat_bot_id("bot.army.health.goal_store") == nil
+      assert Monitor.heartbeat_bot_id("bot.army.health.terrain") == "terrain"
+    end
+
+    test "receiving an alert does not create a tracked bot (the loop is impossible)" do
+      send(Monitor, {:msg, %{topic: "bot.army.health.stale", body: ~s({"bot_id":"recovered"})}})
+      send(Monitor, {:msg, %{topic: "bot.army.health.recovered", body: ~s({"bot_id":"stale"})}})
+      Process.sleep(50)
+
+      assert Monitor.get_status("stale") == :unknown
+      assert Monitor.get_status("recovered") == :unknown
+
+      refute Enum.any?(Monitor.list_bots(), fn {id, _seen, _status} ->
+               id in ["stale", "recovered"]
+             end)
+    end
+
+    test "legacy phantom rows are purged on the next check" do
+      now = System.monotonic_time(:millisecond)
+      :ets.insert(@table, {"stale", now, :healthy, nil})
+
+      send(Monitor, :check)
+      Process.sleep(50)
+
+      assert Monitor.get_status("stale") == :unknown
+    end
+  end
+
+  describe "cross-monitor alert dedup" do
+    test "a peer claim suppresses publishing and expires with the ttl" do
+      refute Monitor.alert_claimed?("bot.army.health.stale", "peer_bot")
+
+      Monitor.claim_alert("bot.army.health.stale", "peer_bot")
+      assert Monitor.alert_claimed?("bot.army.health.stale", "peer_bot")
+
+      stale_at = System.monotonic_time(:millisecond) - 60_000
+      :ets.insert(@alert_claims, {{"bot.army.health.stale", "peer_bot"}, stale_at})
+      refute Monitor.alert_claimed?("bot.army.health.stale", "peer_bot")
+    end
+
+    test "an observed alert records a claim so peers do not duplicate it" do
+      send(
+        Monitor,
+        {:msg, %{topic: "bot.army.health.recovered", body: ~s({"bot_id":"terrain"})}}
+      )
+
+      Process.sleep(50)
+
+      assert Monitor.alert_claimed?("bot.army.health.recovered", "terrain")
     end
   end
 end
