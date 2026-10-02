@@ -180,6 +180,11 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
     }
 
     Process.send_after(self(), :setup_nats, 0)
+    # Subscribe to the Connection's status broadcasts so the
+    # {:nats, :disconnected} / {:nats, :connected} handlers below are live.
+    # Without this the election kept reusing a dead Gnat pid across a broker
+    # outage ("lease renew failed: {:noproc, ...}" every tick).
+    Connection.subscribe_to_status()
     # Single role-check loop for both modes; the mode is adopted as ticks arrive.
     Process.send_after(self(), :check_role, state.check_interval_ms)
 

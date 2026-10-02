@@ -108,10 +108,15 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   @default_ping_interval 30_000
   @default_max_reconnect_attempts 10
   @default_reconnect_delay_ms 1000
+  # Once the attempt budget is spent the Connection keeps trying at this slow
+  # fixed interval. Giving up permanently means a bot that outlived a
+  # multi-minute broker outage never rejoins without a restart — it looks alive
+  # and fails every publish with :not_connected.
+  @degraded_retry_ms 30_000
   @registry BotArmyLibraryRuntime.NATS.ConnectionRegistry
 
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, name: @name)
+    GenServer.start_link(__MODULE__, opts, name: Keyword.get(opts, :name, @name))
   end
 
   def subscribe_to_status do
@@ -139,6 +144,13 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
         pick_opt(opts, nats_env, :max_reconnect_attempts, @default_max_reconnect_attempts),
       reconnect_delay_ms:
         pick_opt(opts, nats_env, :reconnect_delay_ms, @default_reconnect_delay_ms),
+      # Injectable transport (tests drive the link lifecycle without a broker).
+      gnat_starter:
+        Keyword.get(
+          opts,
+          :gnat_starter,
+          Application.get_env(:bot_army_library_runtime, :gnat_starter, &Gnat.start_link/1)
+        ),
       connection: nil,
       reconnect_attempts: 0
     }
@@ -242,14 +254,14 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
 
   @impl true
   def handle_continue(:connect, state) do
-    case connect(state.servers, state.ping_interval) do
+    case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Connection established", servers: inspect(state.servers))
         broadcast_status(:connected)
         {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
 
       {:error, reason} ->
-        handle_connection_error(state, reason)
+        {:noreply, retry_later(state, reason)}
     end
   end
 
@@ -269,7 +281,11 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   def handle_info({:EXIT, pid, reason}, %{connection: pid} = state) do
     Logger.warning("[NATS] Linked Gnat connection died: #{inspect(reason)}")
     broadcast_status(:disconnected)
-    {:noreply, %{state | connection: nil}}
+    # An exited Gnat never sends {:gnat, :disconnected}, so the EXIT itself has
+    # to schedule the recovery. Clearing the slot without a retry left the
+    # Connection nil forever while the bot looked healthy (reconnect_attempts: 0)
+    # and every publish failed with a bare :not_connected until a restart.
+    {:noreply, retry_later(%{state | connection: nil}, {:connection_died, reason})}
   end
 
   def handle_info({:EXIT, _pid, _reason}, state) do
@@ -291,33 +307,14 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
 
   @impl true
   def handle_info(:retry_connect, %{connection: nil} = state) do
-    case connect(state.servers, state.ping_interval) do
+    case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Reconnected successfully")
         broadcast_status(:connected)
         {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
 
       {:error, reason} ->
-        new_attempts = state.reconnect_attempts + 1
-
-        if new_attempts >= state.max_reconnect_attempts do
-          Logger.error("[NATS] Max reconnect attempts exceeded, degrading",
-            attempts: new_attempts,
-            reason: inspect(reason)
-          )
-
-          {:noreply, %{state | reconnect_attempts: new_attempts}}
-        else
-          delay = calculate_backoff(new_attempts, state.reconnect_delay_ms)
-
-          Logger.warning("[NATS] Reconnection failed, retrying in #{delay}ms",
-            attempt: new_attempts,
-            reason: inspect(reason)
-          )
-
-          Process.send_after(self(), :retry_connect, delay)
-          {:noreply, %{state | reconnect_attempts: new_attempts}}
-        end
+        {:noreply, retry_later(state, reason)}
     end
   end
 
@@ -331,14 +328,14 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     {:noreply, state}
   end
 
-  defp connect(servers, ping_interval) do
+  defp connect(%{servers: servers, ping_interval: ping_interval, gnat_starter: starter}) do
     case gnat_settings(servers, ping_interval) do
       {:ok, settings} ->
         # Gnat's init returns {:stop, reason} when TCP connect fails, which
         # surfaces as an EXIT (not {:error, reason}) in the calling process.
         # Catch it so the Connection GenServer can degrade + retry instead of
         # crashing its supervision tree.
-        case safe_gnat_start(settings) do
+        case safe_gnat_start(settings, starter) do
           {:ok, pid} ->
             # Monitor the Gnat process so we detect crashes and handle reconnection
             Process.monitor(pid)
@@ -353,8 +350,8 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     end
   end
 
-  defp safe_gnat_start(settings) do
-    Gnat.start_link(settings)
+  defp safe_gnat_start(settings, starter) do
+    starter.(settings)
   rescue
     error -> {:error, error}
   catch
@@ -400,57 +397,41 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     )
   end
 
-  defp handle_connection_error(state, reason) do
-    if state.reconnect_attempts >= state.max_reconnect_attempts do
-      Logger.error("[NATS] Max reconnect attempts exceeded, degrading",
-        attempts: state.reconnect_attempts,
+  # One retry policy for every path that lost a connection: the initial connect
+  # failing, a failed reconnect, a Gnat EXIT, and {:gnat, :disconnected}. Inside
+  # the attempt budget it backs off with jitter; past it, it keeps trying at the
+  # slow degraded interval. `reconnect_attempts` is reset by the next successful
+  # connect, so a recovered link reclaims the fast budget.
+  defp retry_later(state, reason) do
+    attempts = state.reconnect_attempts + 1
+    delay = next_retry_delay(attempts, state.max_reconnect_attempts, state.reconnect_delay_ms)
+
+    if attempts >= state.max_reconnect_attempts do
+      Logger.error("[NATS] Max reconnect attempts exceeded, retrying every #{delay}ms",
+        attempts: attempts,
         reason: inspect(reason)
       )
-
-      {:noreply, state}
     else
-      delay = calculate_backoff(state.reconnect_attempts, state.reconnect_delay_ms)
-
-      Logger.warning("[NATS] Connection failed, retrying in #{delay}ms",
-        attempt: state.reconnect_attempts + 1,
+      Logger.warning("[NATS] Reconnection failed, retrying in #{delay}ms",
+        attempt: attempts,
         max_attempts: state.max_reconnect_attempts,
         reason: inspect(reason)
       )
-
-      Process.send_after(self(), :retry_connect, delay)
-
-      {:noreply, %{state | reconnect_attempts: state.reconnect_attempts + 1}}
     end
+
+    Process.send_after(self(), :retry_connect, delay)
+    %{state | reconnect_attempts: attempts}
   end
 
   defp reconnect(state) do
-    new_attempts = state.reconnect_attempts + 1
-
-    case connect(state.servers, state.ping_interval) do
+    case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Reconnected successfully")
         broadcast_status(:connected)
         {:ok, %{state | connection: conn, reconnect_attempts: 0}}
 
       {:error, reason} ->
-        if new_attempts >= state.max_reconnect_attempts do
-          Logger.error("[NATS] Max reconnect attempts exceeded",
-            attempts: new_attempts,
-            reason: inspect(reason)
-          )
-
-          {:ok, %{state | reconnect_attempts: new_attempts}}
-        else
-          delay = calculate_backoff(new_attempts, state.reconnect_delay_ms)
-
-          Logger.warning("[NATS] Reconnection failed, retrying in #{delay}ms",
-            attempt: new_attempts,
-            reason: inspect(reason)
-          )
-
-          Process.send_after(self(), :retry_connect, delay)
-          {:ok, %{state | reconnect_attempts: new_attempts}}
-        end
+        {:ok, retry_later(state, reason)}
     end
   end
 
@@ -464,6 +445,28 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
       %{status: if(status == :connected, do: 1, else: 0)},
       %{status: status}
     )
+  end
+
+  @doc """
+  Delay before the next reconnect attempt.
+
+  Exponential backoff with jitter while inside the attempt budget; a slow fixed
+  interval once the budget is spent. Retrying keeps going forever on purpose —
+  the next successful connect resets the budget, and a bot that never retries is
+  a bot that silently stays off the bus.
+
+  ## Examples
+      iex> BotArmyLibraryRuntime.NATS.Connection.next_retry_delay(99, 10, 1000)
+      30000
+      iex> BotArmyLibraryRuntime.NATS.Connection.next_retry_delay(0, 10, 1000) in 1000..2000
+      true
+  """
+  def next_retry_delay(attempts, max_attempts, base_delay) do
+    if attempts >= max_attempts do
+      @degraded_retry_ms
+    else
+      calculate_backoff(attempts, base_delay)
+    end
   end
 
   @doc """
