@@ -188,13 +188,31 @@ defmodule BotArmyLibraryRuntime.Registry do
     # reason, which is how the presence echo-flip eviction bug hid until it
     # ate fitness/chore in the core-full fleet).
     heartbeat_interval_ms =
-      Application.get_env(:bot_army_library_runtime, :registry_heartbeat_interval_ms, @heartbeat_interval_ms)
+      Application.get_env(
+        :bot_army_library_runtime,
+        :registry_heartbeat_interval_ms,
+        @heartbeat_interval_ms
+      )
 
     presence_rebroadcast_ms =
-      Application.get_env(:bot_army_library_runtime, :registry_presence_rebroadcast_ms, @presence_rebroadcast_ms)
+      Application.get_env(
+        :bot_army_library_runtime,
+        :registry_presence_rebroadcast_ms,
+        @presence_rebroadcast_ms
+      )
 
     stale_threshold_ms =
-      Application.get_env(:bot_army_library_runtime, :registry_stale_threshold_ms, @stale_threshold_ms)
+      Application.get_env(
+        :bot_army_library_runtime,
+        :registry_stale_threshold_ms,
+        @stale_threshold_ms
+      )
+
+    # Subscribe to connection status so a dead Gnat pid is dropped rather than
+    # reused (the {:nats, :disconnected}/{:nats, :connected} handlers below are
+    # dead code without this). Observed live 2026-10-01: publishing presence
+    # through the just-died pid terminated the Registry itself.
+    Connection.subscribe_to_status()
 
     # Subscribe to registry query endpoints
     Process.send_after(self(), :setup_nats, 100)
@@ -552,7 +570,7 @@ defmodule BotArmyLibraryRuntime.Registry do
           Reply.error("Unknown registry subject: #{topic}", :unknown_subject)
       end
 
-    if state.connection do
+    if state.connection && Process.alive?(state.connection) do
       case Gnat.pub(state.connection, reply_to, response) do
         :ok ->
           :ok
@@ -1220,7 +1238,10 @@ defmodule BotArmyLibraryRuntime.Registry do
   end
 
   defp broadcast_presence(state, bot_name, subjects, version, heartbeat_at_unix_ms) do
-    if state.connection do
+    # Process.alive?/1 rather than a bare state.connection check: a Gnat pid can
+    # die between the status broadcast and this cast being handled, and
+    # Gnat.pub/3 on a dead pid raises an exit that would take the Registry down.
+    if state.connection && Process.alive?(state.connection) do
       payload = %{
         "bot_name" => bot_name,
         "version" => version,
