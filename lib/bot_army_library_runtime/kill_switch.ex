@@ -162,6 +162,28 @@ defmodule BotArmyLibraryRuntime.KillSwitch do
   end
 
   # ---------------------------------------------------------------------------
+  # Subscriptions
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Subjects this GenServer subscribes to, as `{subject, gnat_opts}`.
+
+  Single source of truth for the control surface: `handle_continue/2` wires
+  exactly this list, and tests assert against it. Previously the subscribe
+  calls and the message handlers were maintained separately, which let
+  `army.killswitch.get` ship as a handler with no matching subscription —
+  `make army-status` then got "no responder" forever.
+  """
+  @spec subscriptions() :: [{String.t(), keyword()}]
+  def subscriptions do
+    [
+      {"army.killswitch.control.>", [queue_group: @queue_group]},
+      {@control_state, []},
+      {@control_get, [queue_group: @queue_group]}
+    ]
+  end
+
+  # ---------------------------------------------------------------------------
   # Subject exemption
   # ---------------------------------------------------------------------------
 
@@ -203,12 +225,14 @@ defmodule BotArmyLibraryRuntime.KillSwitch do
       {:ok, conn} ->
         BotArmyLibraryRuntime.NATS.Connection.subscribe_to_status()
 
-        {:ok, _sub} =
-          Gnat.sub(conn, self(), "army.killswitch.control.>", queue_group: @queue_group)
+        Enum.each(subscriptions(), fn {subject, opts} ->
+          {:ok, _sub} = Gnat.sub(conn, self(), subject, opts)
+        end)
 
-        {:ok, _sub2} = Gnat.sub(conn, self(), @control_state)
-
-        Logger.info("[KillSwitch] subscribed to army.killswitch.control.> + state broadcast")
+        Logger.info(
+          "[KillSwitch] subscribed to " <>
+            (subscriptions() |> Enum.map(&elem(&1, 0)) |> Enum.join(", "))
+        )
 
         {:noreply, state}
 

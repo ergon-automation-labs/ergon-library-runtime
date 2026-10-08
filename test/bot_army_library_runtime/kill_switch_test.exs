@@ -59,6 +59,28 @@ defmodule BotArmyLibraryRuntime.KillSwitchTest do
     end
   end
 
+  describe "control-plane subscriptions" do
+    test "regression: army.killswitch.get is subscribed so army-status can confirm state" do
+      # scripts/killswitch.sh requests army.killswitch.get after halt/resume and
+      # for `make army-status`. Without a subscription every one of those
+      # commands reports "no responder" even though the halt itself worked.
+      assert "army.killswitch.get" in subscription_subjects()
+    end
+
+    test "get is queue-grouped so a single bot answers a fleet-wide query" do
+      assert {"army.killswitch.get", opts} =
+               List.keyfind(KillSwitch.subscriptions(), "army.killswitch.get", 0)
+
+      assert opts[:queue_group] == "killswitch"
+    end
+
+    test "halt/resume control and convergence subjects are wired" do
+      subjects = subscription_subjects()
+      assert "army.killswitch.control.>" in subjects
+      assert "army.killswitch.state" in subjects
+    end
+  end
+
   describe "when not halted" do
     test "all subjects are allowed" do
       assert KillSwitch.allowed?("gtd.task.create") == :ok
@@ -144,4 +166,6 @@ defmodule BotArmyLibraryRuntime.KillSwitchTest do
       end
     end
   end
+
+  defp subscription_subjects, do: Enum.map(KillSwitch.subscriptions(), &elem(&1, 0))
 end
