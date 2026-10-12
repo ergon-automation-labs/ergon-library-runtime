@@ -85,6 +85,30 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   - If max reconnect attempts are exceeded, the application is halted
   - Status is broadcast via Registry so supervisors can react to connection state changes
 
+  ## Subscriptions that survive a reconnect
+
+  `subscribe/1` is the supported way for a process to declare the subjects it
+  answers. It subscribes now (if the link is up) **and** re-subscribes them on
+  every link this module starts, so a responder cannot go dark because the
+  Gnat process was replaced underneath it.
+
+  This exists because `Gnat.sub(conn, self(), subject)` is not durable: the
+  subscription belongs to the Gnat connection process, so when that process
+  dies and the Connection starts a new one, every raw `Gnat.sub` sid goes with
+  it. The pid holding them stays alive and looks healthy while its subjects
+  silently stop answering. Measured on `claude_bridge` (2026-10-12): one Gnat
+  crash took 28 declared bridge subjects dark for 1d19h, including the
+  documented `bridge.chat` and `system.right_turns.log`.
+
+  A responder that uses `subscribe/1` needs no `{:nats, :connected}` handler of
+  its own — the Connection re-subscribes on its behalf.
+
+      BotArmyLibraryRuntime.NATS.Connection.subscribe(["bridge.quest.>"])
+
+  Registering via `subscribe_to_status/0` is the older, narrower API: it only
+  delivers `{:nats, status}` messages and leaves the re-subscription to the
+  caller. Prefer `subscribe/1`.
+
   ## Multi-Cluster Failover
 
   For HA setup (e.g., 4222 + 14223 behind HAProxy), the runtime doesn't need to know about failover—HAProxy handles it at the network level. Point NATS_SERVERS at the HAProxy address.
@@ -119,6 +143,44 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     GenServer.start_link(__MODULE__, opts, name: Keyword.get(opts, :name, @name))
   end
 
+  @doc """
+  Declare the `subjects` the calling process answers, and keep answering them
+  across reconnects.
+
+  Registers the subjects against the calling pid and asks the Connection to
+  subscribe them. Every link started by the Connection re-subscribes the whole
+  registry, so a replaced Gnat process no longer takes a responder's subjects
+  with it. Registration is what survives, not the sid: a responder may call this
+  before the link is up, and the subjects are subscribed when it comes up.
+
+  The messages still arrive as `{:msg, msg}`, unchanged.
+
+  Returns `:ok`. It never fails on "not connected" — not being connected yet is
+  not an error, it is the case this exists for.
+
+  ## Examples
+
+      BotArmyLibraryRuntime.NATS.Connection.subscribe(["bridge.timer.>"])
+  """
+  @spec subscribe([String.t()], GenServer.name()) :: :ok
+  def subscribe(subjects, connection \\ @name) when is_list(subjects) do
+    subjects = Enum.map(subjects, &to_string/1)
+    Registry.register(@registry, :nats_resubscribe, subjects)
+
+    try do
+      GenServer.call(connection, {:subscribe, self(), subjects})
+    catch
+      :exit, {:noproc, _} ->
+        # No Connection process (not started, or restarting). The registration
+        # stands, so the next connect subscribes these subjects anyway.
+        :ok
+
+      :exit, reason ->
+        Logger.warning("[NATS] subscribe/1 could not reach the Connection: #{inspect(reason)}")
+        :ok
+    end
+  end
+
   def subscribe_to_status do
     Registry.register(@registry, :nats_status, [])
   end
@@ -150,6 +212,14 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
           opts,
           :gnat_starter,
           Application.get_env(:bot_army_library_runtime, :gnat_starter, &Gnat.start_link/1)
+        ),
+      # Injectable subscription transport, for the same reason: re-subscribing
+      # is the behaviour under test, and it must be observable without a broker.
+      gnat_sub:
+        Keyword.get(
+          opts,
+          :gnat_sub,
+          Application.get_env(:bot_army_library_runtime, :gnat_sub, &Gnat.sub/3)
         ),
       connection: nil,
       reconnect_attempts: 0
@@ -257,6 +327,7 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Connection established", servers: inspect(state.servers))
+        resubscribe_all(conn, state.gnat_sub)
         broadcast_status(:connected)
         {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
 
@@ -273,6 +344,18 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   @impl true
   def handle_call(:get_connection, _from, state) do
     {:reply, {:ok, state.connection}, state}
+  end
+
+  # A responder declaring its subjects. Registering is what makes them durable;
+  # this call only saves it the wait until the next connect.
+  @impl true
+  def handle_call({:subscribe, _pid, _subjects}, _from, %{connection: nil} = state) do
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:subscribe, pid, subjects}, _from, state) do
+    subscribe_each(state.connection, pid, subjects, state.gnat_sub)
+    {:reply, :ok, state}
   end
 
   @impl true
@@ -310,6 +393,7 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Reconnected successfully")
+        resubscribe_all(conn, state.gnat_sub)
         broadcast_status(:connected)
         {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
 
@@ -427,12 +511,57 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Reconnected successfully")
+        resubscribe_all(conn, state.gnat_sub)
         broadcast_status(:connected)
         {:ok, %{state | connection: conn, reconnect_attempts: 0}}
 
       {:error, reason} ->
         {:ok, retry_later(state, reason)}
     end
+  end
+
+  # Everything that called subscribe/1, on a link this module just started. The
+  # registry is keyed by pid and drops entries when a process dies, so a
+  # responder that restarted is simply absent — it re-registers on its own
+  # connect. Called BEFORE broadcast_status/1 so a subscriber that also has a
+  # {:nats, :connected} handler never gets there first and double-subscribes.
+  defp resubscribe_all(conn, sub_fun) do
+    Registry.dispatch(@registry, :nats_resubscribe, fn entries ->
+      for {pid, subjects} <- entries do
+        subscribe_each(conn, pid, subjects, sub_fun)
+      end
+    end)
+  end
+
+  defp subscribe_each(conn, pid, subjects, sub_fun) do
+    for subject <- subjects do
+      subscribe_one(conn, pid, subject, sub_fun)
+    end
+
+    :ok
+  end
+
+  # A subscription attempt must never take the Connection down: Gnat.sub on a
+  # dying link exits, and an uncaught exit here would kill the process that is
+  # meant to be reconnecting.
+  defp subscribe_one(conn, pid, subject, sub_fun) do
+    case sub_fun.(conn, pid, subject) do
+      {:ok, _sid} ->
+        Logger.debug("[NATS] Subscribed #{inspect(pid)} to #{subject}")
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("[NATS] Subscribe failed for #{subject}: #{inspect(reason)}")
+        :error
+    end
+  rescue
+    error ->
+      Logger.warning("[NATS] Subscribe raised for #{subject}: #{inspect(error)}")
+      :error
+  catch
+    :exit, reason ->
+      Logger.warning("[NATS] Subscribe exited for #{subject}: #{inspect(reason)}")
+      :error
   end
 
   defp broadcast_status(status) do
