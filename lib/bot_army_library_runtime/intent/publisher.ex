@@ -64,6 +64,7 @@ defmodule BotArmyLibraryRuntime.Intent.Publisher do
   require Logger
 
   alias BotArmyLibraryRuntime.Intent.Schema
+  alias BotArmyLibraryRuntime.NATS.Connection
   alias BotArmyLibraryRuntime.NATS.Publisher
 
   @default_veto_timeout_ms 2_000
@@ -240,19 +241,32 @@ defmodule BotArmyLibraryRuntime.Intent.Publisher do
 
     case get_connection() do
       {:ok, conn} ->
-        :ok = Gnat.sub(conn, self(), veto_subj)
+        case Connection.safe_sub(conn, self(), veto_subj) do
+          {:ok, sid} ->
+            {result, endorsements} =
+              collect_responses(intent_id, veto_subj, conn, timeout, [])
 
-        {result, endorsements} =
-          collect_responses(intent_id, veto_subj, conn, timeout, [])
+            # By sid, not by subject: `Gnat.unsub/3` takes the sid `Gnat.sub/3`
+            # returned. The old call passed the subject, so the veto subscription
+            # was never closed and leaked one live subscription per intent.
+            Connection.unsub(conn, sid)
 
-        Gnat.unsub(conn, veto_subj)
+            case result do
+              :vetoed ->
+                result
 
-        case result do
-          :vetoed ->
-            result
+              :proceed ->
+                {:proceed, intent_id, endorsements}
+            end
 
-          :proceed ->
-            {:proceed, intent_id, endorsements}
+          {:error, reason} ->
+            Logger.warning(
+              "[Intent] Could not open the veto window, proceeding without veto check",
+              intent_id: intent_id,
+              reason: inspect(reason)
+            )
+
+            {:proceed, intent_id, []}
         end
 
       {:error, reason} ->
@@ -286,6 +300,14 @@ defmodule BotArmyLibraryRuntime.Intent.Publisher do
             elapsed = System.monotonic_time(:millisecond) - start_time
             remaining = max(0, remaining_ms - elapsed)
             collect_responses(intent_id, veto_subj, conn, remaining, new_endorsements)
+
+          _other ->
+            # A message on the veto subject that this process does not understand
+            # must not raise a CaseClauseError and take the intent publisher with
+            # it: the window closes on its own `after` either way.
+            elapsed = System.monotonic_time(:millisecond) - start_time
+            remaining = max(0, remaining_ms - elapsed)
+            collect_responses(intent_id, veto_subj, conn, remaining, endorsements)
         end
     after
       remaining_ms ->
