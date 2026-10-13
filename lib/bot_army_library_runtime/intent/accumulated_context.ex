@@ -107,6 +107,63 @@ defmodule BotArmyLibraryRuntime.Intent.AccumulatedContext do
   end
 
   @doc """
+  The newest numeric value carried by an observation of `type`.
+
+  `compute_summary/1` aggregates each observation type as
+  `%{count: n, values: [...], latest: entry}` — an **aggregate, never a scalar**.
+  Use this accessor when the recorder stores *the quantity as the observation's
+  value* (`value: overdue`, `value: idle_minutes`) — which is what fitness, gtd,
+  chore and synapse do. Use `observation_count/3` when the recorder emits *one
+  observation per thing* (dispatcher's `:bot_stale`, `value: 1`).
+
+  Reading the aggregate as a scalar is a trap with two failure modes, both seen
+  live: interpolating it leaks the whole map into a user-facing prompt, and
+  `trunc/1` on it raises `ArgumentError` — which killed fitness's IntentEvaluator
+  on every deferred suggestion (air, 2026-10-13).
+
+  Accepts either a snapshot (`%{summary: ...}`) or the summary map itself.
+  Returns `default` when the type is absent or its value is not a number.
+  """
+  @spec latest_value(map(), atom() | String.t(), number()) :: number()
+  def latest_value(container, type, default \\ 0)
+
+  def latest_value(%{summary: summary}, type, default) when is_map(summary),
+    do: latest_value(summary, type, default)
+
+  def latest_value(summary, type, default) when is_map(summary) do
+    case get_in(summary, [type]) do
+      value when is_number(value) -> value
+      %{latest: %{value: value}} when is_number(value) -> value
+      _ -> default
+    end
+  end
+
+  def latest_value(_container, _type, default), do: default
+
+  @doc """
+  How many observations of `type` are in the window.
+
+  Use this when the recorder emits one observation per thing (value `1`), so the
+  aggregate's `count` is the quantity the caller wants. See `latest_value/3` for
+  the other convention. Accepts either a snapshot or the summary map.
+  """
+  @spec observation_count(map(), atom() | String.t(), non_neg_integer()) :: non_neg_integer()
+  def observation_count(container, type, default \\ 0)
+
+  def observation_count(%{summary: summary}, type, default) when is_map(summary),
+    do: observation_count(summary, type, default)
+
+  def observation_count(summary, type, default) when is_map(summary) do
+    case get_in(summary, [type]) do
+      value when is_integer(value) -> value
+      %{count: count} when is_integer(count) -> count
+      _ -> default
+    end
+  end
+
+  def observation_count(_container, _type, default), do: default
+
+  @doc """
   Get recent entries of a specific type.
 
   Returns up to `count` entries of the given type, newest first.
