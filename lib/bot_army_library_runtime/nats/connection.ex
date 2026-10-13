@@ -109,6 +109,16 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   delivers `{:nats, status}` messages and leaves the re-subscription to the
   caller. Prefer `subscribe/1`.
 
+  ## Publishing and unsubscribing that cannot take the daemon down
+
+  `publish/4`, `unsub/3` and `safe_sub/3` exist because gnat 1.13 matches its
+  socket writes as `{:ok, _}` inside its own `handle_call/3`: a write over a
+  socket the broker just dropped returns `{:error, :einval}` and **crashes the
+  Gnat connection process**, taking every caller blocked in `GenServer.call/3`
+  with it. Each of these asks whether the connection is alive and catches the
+  exit, so a dead socket is a returned error. Prefer them over bare `Gnat.pub`,
+  `Gnat.unsub` and `Gnat.sub`.
+
   ## Multi-Cluster Failover
 
   For HA setup (e.g., 4222 + 14223 behind HAProxy), the runtime doesn't need to know about failover—HAProxy handles it at the network level. Point NATS_SERVERS at the HAProxy address.
@@ -180,6 +190,108 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
         :ok
     end
   end
+
+  @doc """
+  Publish a message without letting a dying link take the caller with it.
+
+  `Gnat.pub/4` sends the payload and then matches the socket write as `{:ok, _}`
+  **inside its own `handle_call/3`** (gnat 1.13.1, `lib/gnat.ex:492`, after
+  `socket_write/2`). A broker that has just dropped the socket makes that write
+  return `{:error, :einval}`, so Gnat's connection process crashes on the
+  match — and every caller blocked in `GenServer.call/3` exits with it. Nothing
+  about a send over a dead socket is worth a terminated daemon; this wrapper
+  turns both the error and the exit into a returned value.
+
+  Returns `:ok`, or `{:error, reason}` where `reason` is `:not_connected` (the
+  pid is gone), `{:exit, _}` (Gnat died mid-call), or whatever the socket
+  reported. A publisher that does not care can ignore the error; a publisher
+  that does care no longer has to survive an exit to find out.
+
+  ## Examples
+
+      BotArmyLibraryRuntime.NATS.Connection.publish(conn, "bridge.pulse", "{}")
+  """
+  @spec publish(pid() | atom() | nil, String.t(), binary(), keyword()) :: :ok | {:error, term()}
+  def publish(conn, subject, payload, opts \\ []) do
+    if connection_alive?(conn) do
+      case Gnat.pub(conn, subject, payload, opts) do
+        :ok -> :ok
+        {:ok, _} -> :ok
+        {:error, reason} -> {:error, reason}
+        other -> {:error, {:unexpected, other}}
+      end
+    else
+      {:error, :not_connected}
+    end
+  rescue
+    error -> {:error, error}
+  catch
+    :exit, reason -> {:error, {:exit, reason}}
+  end
+
+  @doc """
+  Unsubscribe without letting a dying link take the caller with it.
+
+  Same defect as `publish/4`, reached from the other side: a responder's
+  `{:nats, :disconnected}` handler calling `Gnat.unsub/3` on the Gnat process
+  that just died gets `** (EXIT) no process`. Three of those inside the default
+  supervisor budget is enough to terminate the whole application.
+
+  Returns `:ok` or `{:error, reason}`. An unsubscribe that was never going to
+  happen is not worth a crash — the subscription is gone either way, because the
+  connection it belonged to is.
+  """
+  @spec unsub(pid() | atom() | nil, non_neg_integer() | String.t(), keyword()) ::
+          :ok | {:error, term()}
+  def unsub(conn, sid, opts \\ []) do
+    if connection_alive?(conn) do
+      case Gnat.unsub(conn, sid, opts) do
+        :ok -> :ok
+        {:error, reason} -> {:error, reason}
+        other -> {:error, {:unexpected, other}}
+      end
+    else
+      {:error, :not_connected}
+    end
+  rescue
+    error -> {:error, error}
+  catch
+    :exit, reason -> {:error, {:exit, reason}}
+  end
+
+  @doc """
+  Subscribe a pid to one subject, tolerating a dying link.
+
+  The same match that makes `publish/4` necessary is in gnat's `{:sub, …}`
+  clause (`:ok = socket_write(state, sub)`), so a subscribe over a dead socket
+  crashes the connection too. Prefer `subscribe/1` — it is durable, because the
+  registration survives the link — and reach for this only when a raw sid is
+  genuinely needed.
+
+  Returns `{:ok, sid}` or `{:error, reason}`; the shape is `Gnat.sub/3`'s, minus
+  the exit.
+  """
+  @spec safe_sub(pid() | atom() | nil, pid(), String.t()) :: {:ok, term()} | {:error, term()}
+  def safe_sub(conn, pid, subject) do
+    if connection_alive?(conn) do
+      case Gnat.sub(conn, pid, subject) do
+        {:ok, sid} -> {:ok, sid}
+        {:error, reason} -> {:error, reason}
+        other -> {:error, {:unexpected, other}}
+      end
+    else
+      {:error, :not_connected}
+    end
+  rescue
+    error -> {:error, error}
+  catch
+    :exit, reason -> {:error, {:exit, reason}}
+  end
+
+  defp connection_alive?(nil), do: false
+  defp connection_alive?(pid) when is_pid(pid), do: Process.alive?(pid)
+  defp connection_alive?(name) when is_atom(name), do: Process.whereis(name) != nil
+  defp connection_alive?(_other), do: false
 
   def subscribe_to_status do
     Registry.register(@registry, :nats_status, [])
