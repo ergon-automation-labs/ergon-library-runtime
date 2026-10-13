@@ -91,8 +91,18 @@ defmodule BotArmyLibraryRuntime.Intent.Publisher do
           | {:vetoed, String.t(), String.t()}
           | {:error, term()}
   def publish_intent(bot_name, action, metadata \\ %{}, opts \\ []) do
-    unless enabled?(), do: {:error, :disabled}
+    if enabled?() do
+      do_publish_intent(bot_name, action, metadata, opts)
+    else
+      {:error, :disabled}
+    end
+  end
 
+  # `unless enabled?(), do: {:error, :disabled}` used to stand alone here. Its
+  # value was discarded, so a disabled publisher published anyway — the fleet's
+  # "check that skipped itself" shape. The guard is a real branch now, and an
+  # executable test covers it.
+  defp do_publish_intent(bot_name, action, metadata, opts) do
     intent_id = UUID.uuid4()
     correlation_id = ensure_correlation_id()
 
@@ -250,14 +260,7 @@ defmodule BotArmyLibraryRuntime.Intent.Publisher do
             # returned. The old call passed the subject, so the veto subscription
             # was never closed and leaked one live subscription per intent.
             Connection.unsub(conn, sid)
-
-            case result do
-              :vetoed ->
-                result
-
-              :proceed ->
-                {:proceed, intent_id, endorsements}
-            end
+            veto_outcome(result, intent_id, endorsements)
 
           {:error, reason} ->
             Logger.warning(
@@ -278,6 +281,39 @@ defmodule BotArmyLibraryRuntime.Intent.Publisher do
 
         {:proceed, intent_id, []}
     end
+  end
+
+  # `collect_responses/5` hands back `{tagged_result, endorsements}`, where the
+  # tag is `{:proceed, intent_id, endorsements}` or `{:vetoed, vetoing_bot, reason}`.
+  #
+  # The original `case result do :vetoed -> ...; :proceed -> ... end` matched bare
+  # atoms that are *never produced*. That clause was unreachable while the older
+  # `:ok = Gnat.sub` MatchError killed the publisher on every intent; once that
+  # was fixed (0.14.92), every intent died here instead, live on 2026-10-13:
+  #
+  #     ** (CaseClauseError) no case clause matching: {:proceed, "94391376-…", []}
+  #     (bot_army_library_runtime 0.14.92) publisher.ex:254: wait_for_vetoes/3
+  #
+  # A source-shape lint cannot catch this; the mapping lives in one pure function
+  # so both tags — and an unexpected one — are executed by a test.
+  @doc false
+  def veto_outcome({:vetoed, vetoing_bot, reason}, _intent_id, _endorsements) do
+    {:vetoed, vetoing_bot, reason}
+  end
+
+  def veto_outcome({:proceed, _intent_id, _endorsements}, intent_id, endorsements) do
+    {:proceed, intent_id, endorsements}
+  end
+
+  # Fail open, like the rest of the veto window: an unrecognised shape must not
+  # take the intent evaluator down with it.
+  def veto_outcome(other, intent_id, _endorsements) do
+    Logger.warning("[Intent] Unexpected veto-window result; proceeding without veto check",
+      intent_id: intent_id,
+      result: inspect(other)
+    )
+
+    {:proceed, intent_id, []}
   end
 
   defp collect_responses(intent_id, veto_subj, conn, remaining_ms, endorsements) do
