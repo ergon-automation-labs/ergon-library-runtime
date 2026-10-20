@@ -13,6 +13,22 @@ defmodule BotArmyLibraryRuntime.Health.MonitorTest do
     :ok
   end
 
+  describe "with_connection/1" do
+    test "a call timeout is a retryable answer, not a crash" do
+      # `GenServer.call` timeout raises :exit, and `rescue` does not catch it.
+      assert Monitor.with_connection(fn -> exit({:timeout, {GenServer, :call, []}}) end) ==
+               {:error, :connection_unavailable}
+    end
+
+    test "a raised error degrades the same way" do
+      assert Monitor.with_connection(fn -> raise "boom" end) == {:error, :no_connection_manager}
+    end
+
+    test "passes a healthy result through" do
+      assert Monitor.with_connection(fn -> {:ok, :conn} end) == {:ok, :conn}
+    end
+  end
+
   describe "get_status/1" do
     test "returns :unknown for untracked bot" do
       assert Monitor.get_status("nonexistent") == :unknown

@@ -621,14 +621,43 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
 
   # Renew failed: re-read the lease and demote only if a fresh foreign lease
   # is confirmed. If we can't read (outage), keep leadership and retry.
+  #
+  # The re-read is also where a stale CAS revision heals. A rejected write means
+  # the store is at some other sequence — and if the record still names us, that
+  # sequence is not a rival's, it is simply the one we must CAS against next.
+  # Keeping the old `lease_revision` here made every later renew fail the same
+  # way, forever: live 2026-10-19, six bots logging `wrong last sequence` on
+  # every tick (gtd, identity, companion, llm, para, skills) while still believing
+  # they were primary. Adopt whatever the store actually holds, in every branch
+  # that reaches a record: the next tick can then write.
   defp confirm_or_keep(state) do
     case lease_read(state) do
-      {:ok, lease, _seq} ->
-        foreign_fresh? =
-          lease["holder"] != state.node_name and
-            lease_fresh?(lease, System.system_time(:millisecond), state.lease_ttl_ms)
+      {:ok, lease, seq} ->
+        now_wall_ms = System.system_time(:millisecond)
+        ours? = lease["holder"] == state.node_name
+        foreign_fresh? = not ours? and lease_fresh?(lease, now_wall_ms, state.lease_ttl_ms)
 
-        if foreign_fresh?, do: {:noreply, demote(state)}, else: {:noreply, state}
+        cond do
+          foreign_fresh? ->
+            {:noreply, demote(state)}
+
+          seq == state.lease_revision ->
+            {:noreply, state}
+
+          true ->
+            Logger.info(
+              "[LeaderElection:#{state.service}] adopting store sequence #{inspect(seq)} " <>
+                "(renew failed, lease still ours: #{inspect(ours?)})"
+            )
+
+            {:noreply, %{state | lease_revision: seq}}
+        end
+
+      {:error, :no_lease} ->
+        # The record is gone (bucket reset / stream recreated). CAS from 0 —
+        # keeping a revision from a record that no longer exists is the same
+        # permanent loop.
+        {:noreply, %{state | lease_revision: nil}}
 
       _ ->
         {:noreply, state}

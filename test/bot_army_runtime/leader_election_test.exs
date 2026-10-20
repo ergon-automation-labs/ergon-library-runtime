@@ -369,6 +369,85 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
       assert is_integer(rev) and rev > 0
     end
 
+    # Append a lease record out of band, the way an older-runtime writer (or a
+    # write this node never saw) advances the store's last sequence.
+    defp advance_lease(gnat, service, holder) do
+      payload =
+        Jason.encode!(%{
+          "holder" => holder,
+          "service" => service,
+          "renewed_at" => DateTime.to_iso8601(DateTime.utc_now()),
+          "expires_at" =>
+            DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), 1_000, :millisecond))
+        })
+
+      case Gnat.request(gnat, "$KV.LEADER_ELECTION.#{service}", payload) do
+        {:ok, %{body: body}} -> Jason.decode!(body)["seq"]
+        {:ok, body} when is_binary(body) -> Jason.decode!(body)["seq"]
+      end
+    end
+
+    test "a leader whose CAS revision went stale adopts the store's sequence instead of
+            renewing with it forever (2026-10-19 live: 'wrong last sequence' every tick)",
+         %{port: port} do
+      {gnat, conn} = start_shared_conn(port)
+      pid = start_kv_election(conn, "kv_resync", "nodeA", :primary)
+      Process.sleep(600)
+
+      assert %{is_leader: true, lease_revision: rev1} = GenServer.call(pid, :get_status)
+      assert is_integer(rev1) and rev1 > 0
+
+      # The store's sequence moves past the revision this node believes it holds,
+      # but the record still names us: we are not dispossessed, our CAS is stale.
+      observed = advance_lease(gnat, "kv_resync", "nodeA")
+      assert observed > rev1
+
+      Process.sleep(600)
+
+      status = GenServer.call(pid, :get_status)
+      assert status.is_leader
+
+      # The heal is what matters, not its cadence: the next renew after the
+      # rejection must CAS against the sequence the store actually holds.
+      assert wait_until(
+               fn -> GenServer.call(pid, :get_status).lease_revision >= observed end,
+               3_000
+             )
+
+      # And renewals work again: the record keeps being rewritten, past the
+      # sequence the out-of-band write left behind.
+      assert wait_until(fn -> lease_seq(gnat, "kv_resync") > observed end, 3_000)
+      assert %{"holder" => "nodeA"} = lease_record(gnat, "kv_resync")
+    end
+
+    defp wait_until(fun, timeout_ms) do
+      deadline = System.monotonic_time(:millisecond) + timeout_ms
+      do_wait_until(fun, deadline)
+    end
+
+    defp do_wait_until(fun, deadline) do
+      cond do
+        fun.() ->
+          true
+
+        System.monotonic_time(:millisecond) >= deadline ->
+          false
+
+        true ->
+          Process.sleep(50)
+          do_wait_until(fun, deadline)
+      end
+    end
+
+    defp lease_seq(gnat, service) do
+      {:ok, msg} =
+        Gnat.Jetstream.API.Stream.get_message(gnat, "KV_LEADER_ELECTION", %{
+          last_by_subj: "$KV.LEADER_ELECTION.#{service}"
+        })
+
+      msg.seq
+    end
+
     test "failover: standby promotes after primary dies (lease + heartbeat expire)", %{port: port} do
       {gnat, conn} = start_shared_conn(port)
       pid_a = start_kv_election(conn, "kv_failover", "nodeA", :primary)

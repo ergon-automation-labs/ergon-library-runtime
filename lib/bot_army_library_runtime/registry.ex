@@ -37,6 +37,13 @@ defmodule BotArmyLibraryRuntime.Registry do
   @registry_queue_group "bot_army.registry.query.responders"
   @registry_presence_subject "bot_army.registry.presence"
 
+  # Presence is liveness, not an event log: the sweep tolerates 40s of silence
+  # and the re-announce cadence is 20s, so anything published inside a few
+  # seconds of the last announce is pure chatter. This floor is what keeps a
+  # caller-side register loop from becoming a bus-wide flood — see
+  # announce_presence/3 for the 2026-10-19 measurement that motivated it.
+  @presence_min_interval_ms 5_000
+
   # ───────────────────────────────────────────────────────────────────────────
   # Capability API
   # ───────────────────────────────────────────────────────────────────────────
@@ -208,6 +215,13 @@ defmodule BotArmyLibraryRuntime.Registry do
         @stale_threshold_ms
       )
 
+    presence_min_interval_ms =
+      Application.get_env(
+        :bot_army_library_runtime,
+        :registry_presence_min_interval_ms,
+        @presence_min_interval_ms
+      )
+
     # Subscribe to connection status so a dead Gnat pid is dropped rather than
     # reused (the {:nats, :disconnected}/{:nats, :connected} handlers below are
     # dead code without this). Observed live 2026-10-01: publishing presence
@@ -226,7 +240,13 @@ defmodule BotArmyLibraryRuntime.Registry do
       connection: nil,
       heartbeat_interval_ms: heartbeat_interval_ms,
       presence_rebroadcast_ms: presence_rebroadcast_ms,
-      stale_threshold_ms: stale_threshold_ms
+      presence_min_interval_ms: presence_min_interval_ms,
+      stale_threshold_ms: stale_threshold_ms,
+      # Presence announce throttle bookkeeping (bot_name => monotonic ms of the
+      # last announce, and the {version, subjects} we announced with).
+      last_announced_ms: %{},
+      last_announced_fingerprint: %{},
+      announce_count: 0
     }
 
     {:ok, state}
@@ -337,8 +357,8 @@ defmodule BotArmyLibraryRuntime.Registry do
     state =
       Enum.reduce(state.bots, state, fn {name, entry}, acc ->
         if entry[:local?] do
-          broadcast_presence(acc, name, entry.subjects, entry.version, now_unix_ms)
           renew_local_entry(acc, name, now_unix_ms)
+          announce_presence(acc, name, now_unix_ms)
         else
           acc
         end
@@ -416,13 +436,7 @@ defmodule BotArmyLibraryRuntime.Registry do
 
     entry = Map.fetch!(state.bots, bot_name)
 
-    broadcast_presence(
-      state,
-      bot_name,
-      entry.subjects,
-      resolved_version,
-      now_unix_ms
-    )
+    state = announce_presence(state, bot_name, now_unix_ms)
 
     # 2026-09-08: demoted to debug — the 20s presence re-announce (33458ac) made
     # this fire ~4.3k times/day/bot; the announce itself is still info-worthy only
@@ -443,7 +457,15 @@ defmodule BotArmyLibraryRuntime.Registry do
     capabilities = build_capability_index(%{state | bots: updated_bots})
 
     Logger.info("[Registry] Bot deregistered: #{bot_name}")
-    {:noreply, %{state | bots: updated_bots, capabilities: capabilities}}
+
+    {:noreply,
+     %{
+       state
+       | bots: updated_bots,
+         capabilities: capabilities,
+         last_announced_ms: Map.delete(state.last_announced_ms, bot_name),
+         last_announced_fingerprint: Map.delete(state.last_announced_fingerprint, bot_name)
+     }}
   end
 
   @impl true
@@ -1236,6 +1258,61 @@ defmodule BotArmyLibraryRuntime.Registry do
         %{state | bots: Map.put(state.bots, bot_name, entry)}
     end
   end
+
+  # Announce a bot's presence, at most once per `presence_min_interval_ms`
+  # unless its version/subjects actually changed.
+  #
+  # Measured live 2026-10-19 on the production bus: `bot_army.registry.presence`
+  # carried ~140 messages/s of ~2 KB payload (~280 KB/s, 98% of all fleet
+  # traffic), 3–8 byte-identical copies of a single `heartbeat_at`, and up to
+  # 24 distinct announces per second from one bot whose own timers fire every
+  # 20 s. Whatever the caller-side loop was, the registry is the one component
+  # that decides how much presence traffic exists — so the bound belongs here:
+  # a bot cannot announce faster than this, and an unchanged bot re-announcing
+  # inside the window publishes nothing at all. Semantics are untouched (the
+  # sweep allows 40 s of silence; the cadence is 20 s).
+  defp announce_presence(state, bot_name, now_unix_ms) do
+    case Map.fetch(state.bots, bot_name) do
+      {:ok, entry} ->
+        now_mono = System.monotonic_time(:millisecond)
+        fingerprint = {entry.version, Enum.map(entry.subjects, &subject_fingerprint/1)}
+        last_ms = Map.get(state.last_announced_ms, bot_name)
+        last_fingerprint = Map.get(state.last_announced_fingerprint, bot_name)
+
+        if last_fingerprint != fingerprint or
+             presence_announce_due?(last_ms, now_mono, state.presence_min_interval_ms) do
+          broadcast_presence(state, bot_name, entry.subjects, entry.version, now_unix_ms)
+
+          %{
+            state
+            | last_announced_ms: Map.put(state.last_announced_ms, bot_name, now_mono),
+              last_announced_fingerprint:
+                Map.put(state.last_announced_fingerprint, bot_name, fingerprint),
+              announce_count: state.announce_count + 1
+          }
+        else
+          state
+        end
+
+      :error ->
+        state
+    end
+  end
+
+  @doc false
+  # Pure so the throttle is testable without a broker.
+  def presence_announce_due?(nil, _now_ms, _min_interval_ms), do: true
+
+  def presence_announce_due?(last_ms, now_ms, min_interval_ms) when is_integer(last_ms) do
+    now_ms - last_ms >= min_interval_ms
+  end
+
+  defp subject_fingerprint(subject) when is_map(subject) do
+    {Map.get(subject, :subject, Map.get(subject, "subject")),
+     Map.get(subject, :type, Map.get(subject, "type"))}
+  end
+
+  defp subject_fingerprint(subject), do: subject
 
   defp broadcast_presence(state, bot_name, subjects, version, heartbeat_at_unix_ms) do
     # Process.alive?/1 rather than a bare state.connection check: a Gnat pid can

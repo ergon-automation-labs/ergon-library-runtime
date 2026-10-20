@@ -25,6 +25,7 @@ defmodule BotArmyLibraryRuntime.RegistryTimingTest do
     Process.sleep(700)
 
     assert {:ok, bots} = BotArmyLibraryRuntime.Registry.list_bots()
+
     assert Enum.find(bots, &(&1["name"] == "local_bot")),
            "locally-registered bot must survive the stale sweep"
   end
@@ -53,6 +54,7 @@ defmodule BotArmyLibraryRuntime.RegistryTimingTest do
     Process.sleep(700)
 
     assert {:ok, bots} = BotArmyLibraryRuntime.Registry.list_bots()
+
     assert Enum.find(bots, &(&1["name"] == "echoed_bot")),
            "self-echo must not flip the local entry to remote (which would stop rebroadcast and get it swept)"
   end
@@ -80,14 +82,42 @@ defmodule BotArmyLibraryRuntime.RegistryTimingTest do
     Process.sleep(700)
 
     {:ok, bots} = BotArmyLibraryRuntime.Registry.list_bots()
+
     refute Enum.find(bots, &(&1["name"] == "remote_bot")),
            "genuinely dead remote bots must still be swept"
+  end
+
+  test "presence announce throttle: one publish per bot per interval, not one per cast" do
+    registry = Process.whereis(BotArmyLibraryRuntime.Registry)
+    before_count = :sys.get_state(registry).announce_count
+
+    subjects = [%{subject: "burst.task.create", type: :request_reply}]
+
+    # A caller-side register loop (2026-10-19: presence at ~140 msg/s, 3-8
+    # identical copies of one heartbeat) must not turn into bus traffic.
+    for _ <- 1..6, do: BotArmyLibraryRuntime.Registry.register("burst_bot", subjects)
+
+    # list_bots is a call: it forces the mailbox to drain first.
+    assert {:ok, _bots} = BotArmyLibraryRuntime.Registry.list_bots()
+
+    after_state = :sys.get_state(registry)
+    assert after_state.announce_count - before_count == 1
+    assert Map.has_key?(after_state.last_announced_ms, "burst_bot")
+  end
+
+  test "presence announce throttle is pure arithmetic" do
+    alias BotArmyLibraryRuntime.Registry
+
+    assert Registry.presence_announce_due?(nil, 1_000, 5_000)
+    refute Registry.presence_announce_due?(1_000, 5_999, 5_000)
+    assert Registry.presence_announce_due?(1_000, 6_000, 5_000)
   end
 
   defp shrink_registry_timing(_context) do
     Application.put_env(:bot_army_library_runtime, :registry_stale_threshold_ms, @tiny_threshold)
     Application.put_env(:bot_army_library_runtime, :registry_heartbeat_interval_ms, 100)
     Application.put_env(:bot_army_library_runtime, :registry_presence_rebroadcast_ms, 200)
+    Application.put_env(:bot_army_library_runtime, :registry_presence_min_interval_ms, 5_000)
 
     # The registry reads its timing config in init/1 — restart it so the
     # shrunken values take effect. setup_all runs ONCE for the whole module
@@ -99,6 +129,7 @@ defmodule BotArmyLibraryRuntime.RegistryTimingTest do
       Application.delete_env(:bot_army_library_runtime, :registry_stale_threshold_ms)
       Application.delete_env(:bot_army_library_runtime, :registry_heartbeat_interval_ms)
       Application.delete_env(:bot_army_library_runtime, :registry_presence_rebroadcast_ms)
+      Application.delete_env(:bot_army_library_runtime, :registry_presence_min_interval_ms)
       restart_registry!()
     end)
 

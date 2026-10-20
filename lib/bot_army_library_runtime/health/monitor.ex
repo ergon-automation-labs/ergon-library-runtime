@@ -261,16 +261,28 @@ defmodule BotArmyLibraryRuntime.Health.Monitor do
   # Helpers
 
   defp get_nats_connection do
-    try do
+    with_connection(fn ->
       case Process.whereis(BotArmyLibraryRuntime.NATS.Connection) do
-        nil ->
-          {:error, :no_connection_manager}
-
-        _ ->
-          GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 1000)
+        nil -> {:error, :no_connection_manager}
+        _ -> GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 1000)
       end
+    end)
+  end
+
+  @doc false
+  # Every failure mode here is "ask again later", never "die": a `GenServer.call`
+  # timeout raises `:exit`, which `rescue` does not catch, so on a thrashing host
+  # (Connection taking >1s to answer) the monitor crashed in `handle_continue/2`,
+  # got restarted by its supervisor, resubscribed, and crashed again — visible
+  # live 2026-10-19 as `Health.Monitor terminating ... EXIT timeout` on air while
+  # the bus was already drowning in presence traffic.
+  def with_connection(fun) when is_function(fun, 0) do
+    try do
+      fun.()
     rescue
       _ -> {:error, :no_connection_manager}
+    catch
+      :exit, _ -> {:error, :connection_unavailable}
     end
   end
 
