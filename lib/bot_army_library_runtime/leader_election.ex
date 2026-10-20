@@ -88,6 +88,15 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
   @acquire_jitter_max_ms 2_000
   @kv_bucket "LEADER_ELECTION"
 
+  # A role is announced once, by cast, the instant it is applied. At boot the
+  # consumer that should act on it may not be registered yet — `GenServer.cast/2`
+  # to a name nobody has taken returns `:ok` and the message is gone. Measured
+  # 2026-10-20: a companion restart applied `:primary` at 10:11:33.119, the
+  # consumer connected at .125, and `companion.reflections.list` had no responder
+  # for 23 minutes. Re-announcing the applied role a few seconds later costs two
+  # idempotent casts and removes the race entirely.
+  @reannounce_ms [2_000, 10_000]
+
   # Force override auto-expiry (same philosophy as the army kill switch:
   # a lost "clear" must never strand a bad decision forever)
   @force_ttl_ms 15 * 60_000
@@ -176,7 +185,8 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
       forced_node: nil,
       forced_expires_at: nil,
       is_leader: nil,
-      pending_callback: nil
+      pending_callback: nil,
+      reannounce_ms: Keyword.get(opts, :reannounce_ms, @reannounce_ms)
     }
 
     Process.send_after(self(), :setup_nats, 0)
@@ -350,6 +360,15 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
     else
       do_acquire(state, expected_seq)
     end
+  end
+
+  @impl true
+  def handle_info(:reannounce_role, state) do
+    # No apply_role/1: this must not re-transition, only repeat what is already
+    # true. Consumers treat a repeated role as a no-op (they resubscribe only
+    # when their subscription list is empty).
+    {:noreply,
+     run_on_role_change(state.on_role_change, role_atom(state.is_leader == true), 0, state)}
   end
 
   @impl true
@@ -809,6 +828,7 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
       )
 
       publish_event(new_state, "role_change")
+      schedule_reannounce(new_state)
       run_on_role_change(new_state.on_role_change, role_atom(new_is_leader), 0, new_state)
     else
       state
@@ -817,6 +837,12 @@ defmodule BotArmyLibraryRuntime.LeaderElection do
 
   defp role_atom(true), do: :primary
   defp role_atom(false), do: :standby
+
+  defp schedule_reannounce(state) do
+    Enum.each(state.reannounce_ms, fn delay ->
+      Process.send_after(self(), :reannounce_role, delay)
+    end)
+  end
 
   defp publish_event(state, reason) do
     Publisher.publish(events_subject(state.service), %{

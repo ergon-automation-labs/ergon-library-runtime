@@ -59,6 +59,20 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
   end
 
   describe "default_role: :primary" do
+    test "re-announces the applied role after boot so a dropped first call is not the only one",
+         %{agent: agent} do
+      start_election("test_reannounce", [default_role: :primary, reannounce_ms: [40, 120]], agent)
+
+      assert wait_until(fn -> Agent.get(agent, & &1) == [:primary] end, 1_000)
+
+      # The consumer's process did not exist when that first cast went out, so
+      # nobody heard it. Nothing else in the system would ever say "primary"
+      # again until a real transition.
+      Agent.update(agent, fn _ -> [] end)
+
+      assert wait_until(fn -> :primary in Agent.get(agent, & &1) end, 1_000)
+    end
+
     test "is leader immediately, no heartbeat wait", %{agent: agent} do
       start_election("test_primary", [default_role: :primary], agent)
       assert LeaderElection.leader?("test_primary") == true
