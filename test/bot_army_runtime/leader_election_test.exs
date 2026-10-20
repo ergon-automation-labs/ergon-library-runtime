@@ -200,7 +200,12 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
   end
 
   describe "lease decision helpers (pure)" do
-    @fresh %{"holder" => "mini", "renewed_at" => DateTime.to_iso8601(DateTime.utc_now())}
+    # Computed per call, not at compile time: as a module attribute this was a
+    # time bomb — the .beam outlives the 45s freshness window, so a later run
+    # read a "fresh" lease as expired and failed for no reason.
+    defp fresh_lease do
+      %{"holder" => "mini", "renewed_at" => DateTime.to_iso8601(DateTime.utc_now())}
+    end
 
     defp state_for(node, ttl) do
       %{
@@ -213,7 +218,7 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
     test "fresh foreign lease -> wait" do
       assert LeaderElection.lease_decision(
                state_for("air", 45_000),
-               @fresh,
+               fresh_lease(),
                System.system_time(:millisecond)
              ) ==
                :wait
@@ -246,7 +251,7 @@ defmodule BotArmyLibraryRuntime.LeaderElectionTest do
     test "own lease -> renew" do
       assert LeaderElection.lease_decision(
                state_for("mini", 45_000),
-               @fresh,
+               fresh_lease(),
                System.system_time(:millisecond)
              ) ==
                :renew
