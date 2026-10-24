@@ -21,8 +21,8 @@ defmodule BotArmyLibraryRuntime.ConfigLoader do
 
   Returns a map of configuration values, or an empty map if file not found.
   """
-  def load_config do
-    config_file = config_file_path()
+  def load_config(path \\ nil) do
+    config_file = path || config_file_path()
     write_debug("[ConfigLoader] Attempting to load config from: #{config_file}")
 
     if File.exists?(config_file) do
@@ -122,9 +122,29 @@ defmodule BotArmyLibraryRuntime.ConfigLoader do
     Logger.debug(msg)
   end
 
+  @doc false
+  # The paths `load_config/0` will look at, in order, for a given name. Exposed so the
+  # name-mismatch repair has a test that does not need `/etc/bot_army` to be writable.
+  def config_candidates(name) when is_binary(name) do
+    [name, name <> "_bot", String.replace_suffix(name, "_bot", "")]
+    |> Enum.uniq()
+    |> Enum.map(&"/etc/bot_army/#{&1}.config.exs")
+  end
+
+  # The name in the environment is not always the name of the file. Salt renders
+  # `/etc/bot_army/<bot>_bot.config.exs` (the OTP release name), while the plist's
+  # `RELEASE_NAME` is sometimes the short app name — measured 2026-10-24 on air:
+  # context_broker's VM answered `RELEASE_NAME=context_broker`, the rendered file was
+  # `context_broker_bot.config.exs`, so the load found nothing, returned `%{}`, and every
+  # knob in that bot's runtime.exs stayed inert *after* it had been taught to load the
+  # file at all. Try the name it has, the same name with `_bot`, without `_bot`, and the
+  # generic fallback — first file that exists wins, and if none does the caller still gets
+  # the old behaviour rather than an error.
   defp config_file_path do
-    app_name = app_name_from_env()
-    "/etc/bot_army/#{app_name}.config.exs"
+    name = app_name_from_env()
+    fallback = "/etc/bot_army/#{name}.config.exs"
+
+    Enum.find(config_candidates(name), fallback, &File.exists?/1)
   end
 
   defp app_name_from_env do
