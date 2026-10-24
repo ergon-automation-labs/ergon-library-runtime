@@ -7,7 +7,14 @@ defmodule BotArmyLibraryRuntime.ConfigLoaderTest do
 
   setup do
     previous = Application.get_env(:bot_army_library_runtime, :config_data)
-    on_exit(fn -> Application.put_env(:bot_army_library_runtime, :config_data, previous) end)
+
+    on_exit(fn ->
+      case previous do
+        nil -> Application.delete_env(:bot_army_library_runtime, :config_data)
+        value -> Application.put_env(:bot_army_library_runtime, :config_data, value)
+      end
+    end)
+
     :ok
   end
 

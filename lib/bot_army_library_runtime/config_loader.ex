@@ -69,7 +69,11 @@ defmodule BotArmyLibraryRuntime.ConfigLoader do
     ConfigLoader.get("COMPANION_NODE_ROLE", fn -> "primary" end)  # using function
   """
   def get(key, default \\ nil) when is_binary(key) do
-    config = Application.get_env(:bot_army_library_runtime, :config_data, %{})
+    # `|| %{}` and not the `get_env/3` default: a key that is *present and nil* answers
+    # nil, and then `Map.get/3` raises BadMapError inside the getter every bot uses.
+    # Measured 2026-10-24 — a test that restored `:config_data` to nil took out 10
+    # RuntimeDbConfig tests with `expected a map, got: nil`.
+    config = Application.get_env(:bot_army_library_runtime, :config_data) || %{}
 
     # Try config file first
     case Map.get(config, key) do
