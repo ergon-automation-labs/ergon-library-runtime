@@ -26,6 +26,7 @@ defmodule BotArmyLibraryRuntime.NATS.ConnectionSubscribeTest do
 
   setup do
     test_pid = self()
+    counter = :counters.new(1, [:atomics])
 
     # A fake link: it only has to exist, be linkable, and be killable.
     starter = fn _settings ->
@@ -35,8 +36,10 @@ defmodule BotArmyLibraryRuntime.NATS.ConnectionSubscribeTest do
     end
 
     # Observes subscriptions without a broker. Runs inside the Connection.
+    # The count distinguishes two `Gnat.sub` calls for one (pid, subject).
     sub = fn conn, pid, subject ->
-      send(test_pid, {:sub, conn, pid, subject})
+      :counters.add(counter, 1, 1)
+      send(test_pid, {:sub, conn, pid, subject, :counters.get(counter, 1)})
       {:ok, 1}
     end
 
@@ -77,7 +80,7 @@ defmodule BotArmyLibraryRuntime.NATS.ConnectionSubscribeTest do
       subscriber = start_subscriber(:connection_subscribe_test, ["bridge.quest.>"], tracker)
 
       # The declaration reaches the live link straight away.
-      assert_receive {:sub, ^pid1, ^subscriber, "bridge.quest.>"}, 2_000
+      assert_receive {:sub, ^pid1, ^subscriber, "bridge.quest.>", _n}, 2_000
 
       # The link dies the way a real Gnat does: an EXIT, with no
       # {:gnat, :disconnected} to follow it. Nothing about the subscriber
@@ -87,7 +90,61 @@ defmodule BotArmyLibraryRuntime.NATS.ConnectionSubscribeTest do
       pid2 = wait_for_new_link(connection, pid1)
 
       # The whole point: the declaration outlives the connection process.
-      assert_receive {:sub, ^pid2, ^subscriber, "bridge.quest.>"}, 3_000
+      assert_receive {:sub, ^pid2, ^subscriber, "bridge.quest.>", _n}, 3_000
+    end
+
+    test "is declared once even when the caller declares it twice on one link", %{
+      connection: connection,
+      tracker: tracker
+    } do
+      {:ok, _pid1} = wait_for_link(connection)
+      flush_start_notifications()
+
+      subscriber =
+        start_redeclaring_subscriber(:connection_subscribe_test, ["bridge.quest.>"], tracker)
+
+      assert_receive {:sub, _conn, ^subscriber, "bridge.quest.>", 1}, 2_000
+
+      # The duplicate that spent real money: `subscribe/1` registers the
+      # declaration and *then* calls the Connection. A link that comes up in
+      # that window is already replayed from the registry, so the explicit call
+      # was a second `Gnat.sub` on the same subject — two deliveries per message.
+      # Measured on mini 2026-11-12: one 1-share order became two 1-share fills.
+      send(subscriber, :declare_again)
+
+      refute_receive {:sub, _conn, ^subscriber, "bridge.quest.>", _n}, 300
+    end
+
+    test "is declared once when the declaration lands before the link", %{
+      sub: sub,
+      tracker: tracker
+    } do
+      # The live sequence: a responder subscribes while the Connection is still
+      # dialling. Registration survives; the responder then declares again (a
+      # retry, a re-register, a second init) once the link is up.
+      {:ok, connection} =
+        Connection.start_link(
+          name: :connection_subscribe_race_test,
+          servers: [{"localhost", 42_991}],
+          reconnect_delay_ms: 50,
+          max_reconnect_attempts: 2,
+          gnat_starter: fn _settings -> {:error, :refused} end,
+          gnat_sub: sub
+        )
+
+      on_exit(fn -> if Process.alive?(connection), do: Process.exit(connection, :kill) end)
+
+      subscriber =
+        start_redeclaring_subscriber(
+          :connection_subscribe_race_test,
+          ["bridge.workflow.>"],
+          tracker
+        )
+
+      refute_receive {:sub, _conn, ^subscriber, _subject, _n}, 200
+
+      send(subscriber, :declare_again)
+      refute_receive {:sub, _conn, ^subscriber, _subject, _n}, 200
     end
 
     test "is not reported as an error when no link ever arrives", %{sub: sub} do
@@ -114,8 +171,30 @@ defmodule BotArmyLibraryRuntime.NATS.ConnectionSubscribeTest do
                :ok
 
       # Nothing to subscribe to yet, and that is not a failure.
-      refute_receive {:sub, _conn, _pid, _subject}, 200
+      refute_receive {:sub, _conn, _pid, _subject, _n}, 200
     end
+  end
+
+  # A responder that declares its subjects, then declares them again on demand —
+  # the shape the double subscription was made of.
+  defp start_redeclaring_subscriber(connection, subjects, tracker) do
+    parent = self()
+
+    pid =
+      spawn(fn ->
+        Connection.subscribe(subjects, connection)
+        send(parent, {:subscribed, self()})
+
+        receive do
+          :declare_again -> Connection.subscribe(subjects, connection)
+        end
+
+        Process.sleep(30_000)
+      end)
+
+    assert_receive {:subscribed, ^pid}, 2_000
+    Agent.update(tracker, &[pid | &1])
+    pid
   end
 
   # A process that declares subjects and then keeps living, like a responder.

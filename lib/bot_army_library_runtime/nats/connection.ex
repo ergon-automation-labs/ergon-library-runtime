@@ -334,6 +334,11 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
           Application.get_env(:bot_army_library_runtime, :gnat_sub, &Gnat.sub/3)
         ),
       connection: nil,
+      # (pid, subject) pairs already subscribed on the *current* link. See
+      # `subscribe_each/5`: the same pid can reach the link twice (its own
+      # `subscribe/1` call and the registry replay), and a second `Gnat.sub`
+      # delivers every message twice.
+      subs: %{},
       reconnect_attempts: 0
     }
 
@@ -439,9 +444,9 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Connection established", servers: inspect(state.servers))
-        resubscribe_all(conn, state.gnat_sub)
+        subs = resubscribe_all(conn, state.gnat_sub, %{})
         broadcast_status(:connected)
-        {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
+        {:noreply, %{state | connection: conn, subs: subs, reconnect_attempts: 0}}
 
       {:error, reason} ->
         {:noreply, retry_later(state, reason)}
@@ -466,8 +471,8 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   end
 
   def handle_call({:subscribe, pid, subjects}, _from, state) do
-    subscribe_each(state.connection, pid, subjects, state.gnat_sub)
-    {:reply, :ok, state}
+    subs = subscribe_each(state.connection, pid, subjects, state.gnat_sub, state.subs)
+    {:reply, :ok, %{state | subs: subs}}
   end
 
   @impl true
@@ -505,9 +510,9 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Reconnected successfully")
-        resubscribe_all(conn, state.gnat_sub)
+        subs = resubscribe_all(conn, state.gnat_sub, %{})
         broadcast_status(:connected)
-        {:noreply, %{state | connection: conn, reconnect_attempts: 0}}
+        {:noreply, %{state | connection: conn, subs: subs, reconnect_attempts: 0}}
 
       {:error, reason} ->
         {:noreply, retry_later(state, reason)}
@@ -623,9 +628,9 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
     case connect(state) do
       {:ok, conn} ->
         Logger.info("[NATS] Reconnected successfully")
-        resubscribe_all(conn, state.gnat_sub)
+        subs = resubscribe_all(conn, state.gnat_sub, %{})
         broadcast_status(:connected)
-        {:ok, %{state | connection: conn, reconnect_attempts: 0}}
+        {:ok, %{state | connection: conn, subs: subs, reconnect_attempts: 0}}
 
       {:error, reason} ->
         {:ok, retry_later(state, reason)}
@@ -637,20 +642,38 @@ defmodule BotArmyLibraryRuntime.NATS.Connection do
   # responder that restarted is simply absent — it re-registers on its own
   # connect. Called BEFORE broadcast_status/1 so a subscriber that also has a
   # {:nats, :connected} handler never gets there first and double-subscribes.
-  defp resubscribe_all(conn, sub_fun) do
-    Registry.dispatch(@registry, :nats_resubscribe, fn entries ->
-      for {pid, subjects} <- entries do
-        subscribe_each(conn, pid, subjects, sub_fun)
-      end
+  defp resubscribe_all(conn, sub_fun, subs) do
+    # `Registry.lookup/2` rather than `dispatch/3`: this has to *return* the
+    # accumulator, and `dispatch/3` answers `:ok`.
+    Enum.reduce(Registry.lookup(@registry, :nats_resubscribe), subs, fn {pid, subjects}, acc ->
+      subscribe_each(conn, pid, subjects, sub_fun, acc)
     end)
   end
 
-  defp subscribe_each(conn, pid, subjects, sub_fun) do
-    for subject <- subjects do
-      subscribe_one(conn, pid, subject, sub_fun)
-    end
+  # One `Gnat.sub` per (pid, subject) per link, and never two.
+  #
+  # `subscribe/1` registers the declaration and *then* asks the Connection to
+  # subscribe it. If the link comes up in that window, `resubscribe_all/3`
+  # already made the subscription and the explicit call makes a second one — the
+  # same pid, the same subject, twice. Measured on mini 2026-11-12: every boot of
+  # `trading_portfolio` logged `Subscribed #PID<...> to portfolio.order.place`
+  # twice, one millisecond apart, so every request to the door was handled twice
+  # and a 1-share order at Public became two 1-share fills.
+  #
+  # The map is reset whenever a new link is made, because subscriptions belong to
+  # the Gnat process: a fresh link has none of them.
+  defp subscribe_each(conn, pid, subjects, sub_fun, subs) do
+    Enum.reduce(subjects, subs, fn subject, acc ->
+      subject = to_string(subject)
+      known = Map.get(acc, pid, MapSet.new())
 
-    :ok
+      if MapSet.member?(known, subject) do
+        acc
+      else
+        subscribe_one(conn, pid, subject, sub_fun)
+        Map.put(acc, pid, MapSet.put(known, subject))
+      end
+    end)
   end
 
   # A subscription attempt must never take the Connection down: Gnat.sub on a
